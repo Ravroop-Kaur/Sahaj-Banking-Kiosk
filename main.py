@@ -67,7 +67,7 @@ def home():
 @app.get("/api/health")
 def health():
     initialize_database()
-    return {"status": "ok", "ocr": "local-windows-ocr-or-tesseract", "ocr_engine_available": bool(shutil.which("tesseract")) or (sys.platform == "win32" and bool(shutil.which("powershell.exe"))) or bool(os.getenv("GEMINI_API_KEY", "").strip()), "speech": "gemini-configured" if os.getenv("GEMINI_API_KEY") else "gemini-key-required", "pdf_template": "synthetic-clean-forms", "bank_integration": False, "database": str(DB_PATH), "synthetic_database": True}
+    return {"status": "ok", "ocr": ("tesseract" if shutil.which("tesseract") else "windows-ocr" if (sys.platform == "win32" and shutil.which("powershell.exe")) else "gemini-vision" if os.getenv("GEMINI_API_KEY", "").strip() else "NONE - install tesseract or set GEMINI_API_KEY"), "ocr_engine_available": bool(shutil.which("tesseract")) or (sys.platform == "win32" and bool(shutil.which("powershell.exe"))) or bool(os.getenv("GEMINI_API_KEY", "").strip()), "speech": "gemini-configured" if os.getenv("GEMINI_API_KEY") else "gemini-key-required", "pdf_template": "synthetic-clean-forms", "bank_integration": False, "database": str(DB_PATH), "synthetic_database": True}
 
 GEMINI_LIVE_DEFAULT_MODELS = [
     "gemini-3.8-live",
@@ -284,6 +284,10 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
         scale = min(3.0, max(1.0, 1600 / max(min_side, 1)))
         if scale > 1:
             image = image.resize((round(image.width * scale), round(image.height * scale)), Image.Resampling.LANCZOS)
+        # Clean (un-thresholded) copy for Gemini vision; .jpg so the Tesseract/Windows *.png globs skip it.
+        gemini_copy = image.copy()
+        gemini_copy.thumbnail((2000, 2000))
+        gemini_copy.save(folder / "original.jpg", format="JPEG", quality=90)
         variants = []
         for angle in (0, 90, 180, 270):
             oriented = image.rotate(angle, expand=True) if angle else image
@@ -313,36 +317,90 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
             raise RuntimeError("Windows local image preprocessing produced no OCR variants.")
         return paths
 
+_GEMINI_VISION_MODEL = {"name": ""}
+
+def _gemini_vision_candidates(api_key: str) -> list[str]:
+    """Ask Google which models this key can call, and return the plausible vision-capable 'flash' ones, newest first."""
+    names = []
+    configured = os.getenv("GEMINI_OCR_MODEL", "").strip()
+    if configured:
+        names.append(configured)
+    if _GEMINI_VISION_MODEL["name"]:
+        names.append(_GEMINI_VISION_MODEL["name"])
+    try:
+        req = urlrequest.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": api_key})
+        with urlrequest.urlopen(req, timeout=20) as resp:
+            listing = json.loads(resp.read().decode("utf-8"))
+        found = []
+        for item in listing.get("models", []):
+            name = str(item.get("name", "")).replace("models/", "")
+            if "generateContent" not in (item.get("supportedGenerationMethods") or []):
+                continue
+            if any(bad in name for bad in ("live", "tts", "image", "embed", "audio", "native", "robotics", "computer", "thinking", "lite", "gemma", "learnlm", "aqa", "veo", "imagen")):
+                continue
+            if "flash" in name:
+                found.append(name)
+        # Prefer stable names over previews/experiments, then newer versions.
+        found.sort(key=lambda n: (("preview" in n or "exp" in n), [-int(x) if x.isdigit() else 0 for x in re.findall(r"\d+", n)]))
+        names.extend(found)
+    except Exception as exc:
+        print("GEMINI MODEL LIST ERROR:", repr(exc), flush=True)
+    names.extend(["gemini-2.5-flash", "gemini-2.0-flash"])
+    return list(dict.fromkeys(names))
+
+
 def _gemini_read_passbook(folder: Path) -> str:
     """Transcribe the passbook text with Gemini vision so the normal account-number parsing can run on it."""
     import base64
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("No OCR engine is installed on this server and GEMINI_API_KEY is not set. Set GEMINI_API_KEY (or install Tesseract) and restart.")
-    paths = sorted(folder.glob("gray_0.png")) or sorted(folder.glob("*.png"))
-    if not paths:
-        raise RuntimeError("No image was available to read.")
-    model = os.getenv("GEMINI_OCR_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    original = folder / "original.jpg"
+    if original.exists():
+        image_bytes, mime = original.read_bytes(), "image/jpeg"
+    else:
+        paths = sorted(folder.glob("gray_0.png")) or sorted(folder.glob("*.png"))
+        if not paths:
+            raise RuntimeError("No image was available to read.")
+        image_bytes, mime = paths[0].read_bytes(), "image/png"
     payload = {
         "contents": [{"role": "user", "parts": [
             {"text": "This is a photo of a synthetic demo bank passbook. It may be rotated. Transcribe ALL printed text exactly as written, line by line, keeping labels such as 'Account Number' next to their values. Output plain text only."},
-            {"inlineData": {"mimeType": "image/png", "data": base64.b64encode(paths[0].read_bytes()).decode("ascii")}}]}],
+            {"inlineData": {"mimeType": mime, "data": base64.b64encode(image_bytes).decode("ascii")}}]}],
         "generationConfig": {"temperature": 0},
     }
-    req = urlrequest.Request(endpoint, data=json.dumps(payload).encode("utf-8"),
-                             headers={"Content-Type": "application/json", "x-goog-api-key": api_key}, method="POST")
-    try:
-        with urlrequest.urlopen(req, timeout=40) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except (urlerror.URLError, TimeoutError, ValueError) as exc:
-        raise RuntimeError(f"Could not read the passbook with Gemini: {exc}")
-    parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
-    text = "\n".join(part.get("text", "") for part in parts)
-    if not text.strip():
-        raise RuntimeError("Gemini returned no text for this passbook photo.")
-    return text
-
+    body = json.dumps(payload).encode("utf-8")
+    last_error = "no model tried"
+    tried = 0
+    for model in _gemini_vision_candidates(api_key):
+        if tried >= 6:
+            break
+        tried += 1
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        req = urlrequest.Request(endpoint, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": api_key}, method="POST")
+        try:
+            with urlrequest.urlopen(req, timeout=40) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urlerror.HTTPError as exc:
+            detail = ""
+            try:
+                detail = exc.read().decode("utf-8", "replace")[:200]
+            except Exception:
+                pass
+            last_error = f"{model}: HTTP {exc.code} {detail}"
+            print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
+            continue
+        except (urlerror.URLError, TimeoutError, ValueError) as exc:
+            last_error = f"{model}: {exc}"
+            print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
+            continue
+        parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
+        text = "\n".join(part.get("text", "") for part in parts)
+        if text.strip():
+            _GEMINI_VISION_MODEL["name"] = model
+            return text
+        last_error = f"{model}: empty answer"
+    raise RuntimeError(f"Could not read the passbook with Gemini ({last_error})")
 
 def _recognize_local_variants(folder: Path) -> tuple[str, str]:
     """Run fast local OCR first on upright variants; broaden only if account number is not found."""

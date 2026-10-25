@@ -533,7 +533,7 @@ async function processPassbookImage(){
   const response=await fetch('/api/ocr/passbook',{method:'POST',body:fd});const d=await response.json();
   if(!response.ok)throw new Error(d.detail||'Could not read the passbook.');
   const candidate=String(d.fields?.account_id?.value||'').trim();
-  if(!/^\d{8,18}$/.test(candidate))throw new Error((d.engine==='local OCR unavailable'&&d.notice?d.notice+' — ':'')+'Could not read the account number clearly. Please choose another passbook photo.');
+  if(!/^\d{8,18}$/.test(candidate))throw new Error(d.notice||'Could not read the account number clearly. Please choose another passbook photo.');
   $('#ocrStatus').textContent='Reading passbook and finding the matching demo account…';
   const lookupResponse=await fetch('/api/demo-profile/lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account_id:candidate})});
   const match=await lookupResponse.json();
