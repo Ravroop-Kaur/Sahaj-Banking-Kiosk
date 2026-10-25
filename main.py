@@ -25,6 +25,11 @@ VENDORED_PYTHON = ROOT / "vendor" / "python"
 if VENDORED_PYTHON.exists():
     sys.path.insert(0, str(VENDORED_PYTHON))
 app = FastAPI(title="Banking Assistance Kiosk MVP")
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
+
+
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 MAPPING_CONFIG = json.loads((ROOT / "field_mappings.json").read_text(encoding="utf-8"))
 WITHDRAWAL_MAP = MAPPING_CONFIG["withdrawal"]
@@ -64,6 +69,93 @@ def health():
     initialize_database()
     return {"status": "ok", "ocr": "local-windows-ocr-or-tesseract", "speech": "gemini-configured" if os.getenv("GEMINI_API_KEY") else "gemini-key-required", "pdf_template": "synthetic-clean-forms", "bank_integration": False, "database": str(DB_PATH), "synthetic_database": True}
 
+GEMINI_LIVE_DEFAULT_MODELS = [
+    "gemini-3.8-live",
+    "gemini-3.1-flash-live-preview",
+    "gemini-2.5-flash-native-audio-preview-12-2025",
+]
+
+
+def _live_model_candidates() -> list[str]:
+    """Configured model first, then known Live models as automatic fallbacks."""
+    configured = [m.strip() for m in os.getenv("GEMINI_LIVE_MODEL", "").split(",") if m.strip()]
+    extra = [m.strip() for m in os.getenv("GEMINI_LIVE_FALLBACK_MODELS", "").split(",") if m.strip()]
+    ordered: list[str] = []
+    for name in configured + extra + GEMINI_LIVE_DEFAULT_MODELS:
+        name = name.removeprefix("models/")
+        if name not in ordered:
+            ordered.append(name)
+    return ordered
+
+
+def _ws_connect():
+    """websockets moved its client API between releases; support both."""
+    try:
+        from websockets.legacy.client import connect  # websockets <= 15
+        return connect
+    except Exception:
+        from websockets import connect  # newer releases
+        return connect
+
+
+def _frame_to_text(message):
+    """Gemini sometimes sends JSON inside binary frames; the browser needs text it can JSON.parse."""
+    if isinstance(message, (bytes, bytearray)):
+        try:
+            text = bytes(message).decode("utf-8")
+            json.loads(text)
+            return text
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return None  # real binary payload
+    return message
+
+
+def _upstream_error(text) -> str:
+    try:
+        payload = json.loads(text)
+    except (TypeError, json.JSONDecodeError):
+        return ""
+    err = payload.get("error") if isinstance(payload, dict) else None
+    if not err:
+        return ""
+    if isinstance(err, dict):
+        return f"code={err.get('code', 'unknown')} status={err.get('status', '')}: {err.get('message', 'No error message returned')}"
+    return str(err)[:500]
+
+
+@app.get("/api/gemini/check")
+async def gemini_check():
+    """Open http://127.0.0.1:8766/api/gemini/check to see exactly why Gemini will not connect."""
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return {"ok": False, "problem": "GEMINI_API_KEY is empty. Put your key in the .env file (not .env.example) and restart the kiosk."}
+
+    def probe(model: str) -> dict:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}?key={api_key}"
+        try:
+            with urlrequest.urlopen(urlrequest.Request(url), timeout=10) as resp:
+                return {"model": model, "available": resp.status == 200}
+        except urlerror.HTTPError as exc:
+            try:
+                detail = json.loads(exc.read().decode("utf-8")).get("error", {}).get("message", "")
+            except Exception:
+                detail = ""
+            return {"model": model, "available": False, "http_status": exc.code, "detail": detail[:300].replace(api_key, "***")}
+        except Exception as exc:
+            return {"model": model, "available": False, "network_error": f"{type(exc).__name__}: {str(exc)[:200]}".replace(api_key, "***")}
+
+    results = [await asyncio.to_thread(probe, m) for m in _live_model_candidates()]
+    if all("network_error" in r for r in results):
+        problem = "This computer cannot reach generativelanguage.googleapis.com (firewall, proxy, VPN or no internet)."
+    elif any(r.get("http_status") in (400, 401, 403) for r in results):
+        problem = "Google rejected the API key. Create a new key at https://aistudio.google.com/apikey and check it has Gemini API access/billing for Live models."
+    elif not any(r["available"] for r in results):
+        problem = "None of the Live models is available to this key."
+    else:
+        problem = ""
+    return {"ok": any(r["available"] for r in results), "problem": problem, "models": results}
+
+
 @app.websocket("/api/gemini/live")
 async def gemini_live_proxy(client: WebSocket):
     """Proxy Gemini Live traffic so the Google API key is never sent to the browser."""
@@ -73,47 +165,110 @@ async def gemini_live_proxy(client: WebSocket):
         await client.send_json({"proxyError": "Gemini voice is not configured. Add GEMINI_API_KEY to the server .env file."})
         await client.close(code=1011)
         return
+    upstream = None
     try:
-        from websockets.legacy.client import connect as websocket_connect
         from urllib.parse import quote
+        connect = _ws_connect()
         url = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=" + quote(api_key)
-        async with websocket_connect(url, max_size=12 * 1024 * 1024, open_timeout=15) as upstream:
-            async def browser_to_gemini():
-                while True:
-                    message = await client.receive_text()
-                    await upstream.send(message)
-            async def gemini_to_browser():
-                async for message in upstream:
-                    # Gemini may send either text JSON frames or binary frames.
-                    # Starlette's send_text expects str; calling it with bytes raises
-                    # the exact "'bytes' object has no attribute 'encode'" error.
-                    if isinstance(message, bytes):
-                        await client.send_bytes(message)
-                    else:
-                        await client.send_text(message)
-            tasks = [asyncio.create_task(browser_to_gemini()), asyncio.create_task(gemini_to_browser())]
-            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-            for task in pending:
-                task.cancel()
-            for task in done:
-                exc = task.exception()
-                if exc and not isinstance(exc, WebSocketDisconnect):
-                    raise exc
+        # The browser's first message is the setup message. Keep it so we can retry other models.
+        first = await asyncio.wait_for(client.receive_text(), timeout=20)
+        setup = json.loads(first)
+        if not isinstance(setup, dict) or not isinstance(setup.get("setup"), dict):
+            raise ValueError("The first message from the browser must be a Gemini setup message")
+        failures: list[str] = []
+        first_reply = None
+        for model in _live_model_candidates():
+            payload = json.loads(first)
+            payload["setup"]["model"] = "models/" + model
+            conn = None
+            try:
+                conn = await connect(url, max_size=12 * 1024 * 1024, open_timeout=15)
+                await conn.send(json.dumps(payload, ensure_ascii=False))
+                print(f"[Gemini Live] Starting setup with model {model}", flush=True)
+                reply = await asyncio.wait_for(conn.recv(), timeout=20)
+                text = _frame_to_text(reply)
+                err = _upstream_error(text) if text else ""
+                if err:
+                    raise RuntimeError(err)
+                upstream, first_reply = conn, (text if text is not None else reply)
+                break
+            except Exception as exc:
+                code = getattr(exc, "code", None)
+                reason = getattr(exc, "reason", "") or str(exc)
+                note = f"{model}: {type(exc).__name__}" + (f" (close code {code})" if code else "") + (f" - {reason}" if reason else "")
+                note = note.replace(api_key, "***")[:300]
+                failures.append(note)
+                print(f"[Gemini Live] {note}", flush=True)
+                if conn is not None:
+                    try:
+                        await conn.close()
+                    except Exception:
+                        pass
+        if upstream is None:
+            await client.send_json({"proxyError": "Gemini Live could not start. " + " | ".join(failures[:3]) + " — open /api/gemini/check for a diagnosis."})
+            await client.close(code=1011)
+            return
+        if isinstance(first_reply, (bytes, bytearray)):
+            await client.send_bytes(bytes(first_reply))
+        else:
+            await client.send_text(first_reply)
+
+        async def browser_to_gemini():
+            while True:
+                message = await client.receive()
+                if message["type"] == "websocket.disconnect":
+                    raise WebSocketDisconnect()
+                if message.get("text") is not None:
+                    await upstream.send(message["text"])
+                elif message.get("bytes") is not None:
+                    await upstream.send(message["bytes"])
+
+        async def gemini_to_browser():
+            async for message in upstream:
+                text = _frame_to_text(message)
+                if text is None:
+                    await client.send_bytes(bytes(message))
+                    continue
+                err = _upstream_error(text)
+                if err:
+                    print(f"[Gemini Live upstream error] {err.replace(api_key, '***')}", flush=True)
+                await client.send_text(text)
+
+        tasks = [asyncio.create_task(browser_to_gemini()), asyncio.create_task(gemini_to_browser())]
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
+        for task in done:
+            exc = task.exception()
+            if exc and not isinstance(exc, WebSocketDisconnect):
+                raise exc
+        close_code = getattr(upstream, "close_code", None)
+        close_reason = getattr(upstream, "close_reason", "") or ""
+        if close_code not in (None, 1000, 1001):
+            print(f"[Gemini Live] Google closed the session: code={close_code} reason={close_reason}", flush=True)
+            try:
+                await client.send_json({"proxyError": f"Google ended the Gemini Live session (code {close_code}): {close_reason[:200]}"})
+            except Exception:
+                pass
     except WebSocketDisconnect:
         pass
     except Exception as exc:
-        # Log the underlying error to the launcher terminal so connection failures can be diagnosed.
         import traceback
         print(f"[Gemini Live proxy] {type(exc).__name__}: {exc}", flush=True)
         traceback.print_exc()
         try:
-            # Include a short diagnostic detail in the UI; never include the API key or request URL.
-            detail = str(exc).replace("\n", " ").strip()[:240]
+            detail = str(exc).replace("\n", " ").replace(api_key, "***").strip()[:240]
             suffix = f": {detail}" if detail else ""
-            await client.send_json({"proxyError": f"Gemini Live connection failed ({type(exc).__name__}){suffix}. Check the kiosk terminal for details."})
+            await client.send_json({"proxyError": f"Gemini Live connection failed ({type(exc).__name__}){suffix}. Open /api/gemini/check or look at the kiosk terminal."})
             await client.close(code=1011)
         except Exception:
             pass
+    finally:
+        if upstream is not None:
+            try:
+                await upstream.close()
+            except Exception:
+                pass
 
 
 def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -> list[Path]:
@@ -337,6 +492,14 @@ def _intent_from_model(text: str, language: str) -> dict | None:
 def _extract_explicit_amount(text: str) -> str:
     """Extract only amounts with a currency marker or an action/amount cue nearby."""
     s = re.sub(r"\s+", " ", text.lower()).strip()
+    # Keep grouped numbers whole ("10,000", "1,00,000", "10 000") and expand "10 thousand" / "10 हज़ार".
+    while re.search(r"(\d),(\d{2,3})(?!\d)", s):
+        s = re.sub(r"(\d),(\d{2,3})(?!\d)", r"\1\2", s, count=1)
+    s = re.sub(r"(\d{1,3})\s(\d{3})(?!\d)", r"\1\2", s)
+    scale = {"thousand": 1000, "k": 1000, "हज़ार": 1000, "हजार": 1000, "lakh": 100000, "lac": 100000, "लाख": 100000, "hundred": 100, "सौ": 100}
+    def _expand(m):
+        return str(int(float(m.group(1)) * scale[m.group(2)]))
+    s = re.sub(r"(\d+(?:\.\d+)?)\s*(thousand|k(?![a-z])|हज़ार|हजार|lakh|lac|लाख|hundred|सौ)", _expand, s)
     number = r"([0-9]{1,7}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)"
     patterns = [
         rf"(?:₹|rs\.?\s*|rupees?\s*|inr\s*){number}",
@@ -384,7 +547,7 @@ def _fallback_intent(text: str) -> dict:
     if any(w in s for w in greetings):
         return {"intent": "greeting", "confidence": "high", "amount": "", "message": "Hello. Tell me what you would like to do with your account.", "engine": "fallback"}
     # Explicitly flag conflicting cues and unsupported account services rather than guessing.
-    unsupported_terms = ["open an account", "account opening", "new account", "change my address", "update my details", "change phone", "aadhaar", "aadhar", "pan card", "check balance", "balance inquiry", "transfer money", "send money"]
+    unsupported_terms = ["open an account", "open account", "account opening", "new account", "change my address", "update my details", "change phone", "aadhaar", "aadhar", "pan card", "check balance", "balance inquiry", "transfer money", "send money", "account open", "open a bank account", "change address", "apply for loan", "credit card", "मुझे अकाउंट खोलना", "मुझे खाता खोलना", "अकाउंट खोलना", "खाता खोलना", "नया खाता", "बैंक खाता खोल", "बैलेंस चेक", "बैलेंस बत", "आधार जोड़", "आधार लिंक", "पता बदल", "मोबाइल नंबर बदल", "पैसे ट्रांसफर", "लोन चाहिए", "खाता खुलवाना", "اکاؤنٹ کھول", "نیا اکاؤنٹ", "بیلنس چیک", "اکاؤنٹ کھلوان", "ਖਾਤਾ ਖੋਲ੍ਹ", "ਨਵਾਂ ਖਾਤਾ", "ਬੈਲੰਸ ਚੈੱਕ", "ਪਤਾ ਬਦਲ"]
     if any(w in s for w in unsupported_terms):
         return {"intent": "unsupported", "confidence": "medium", "amount": "", "message": "This kiosk currently prepares only withdrawal and deposit drafts. Please ask bank staff for this request.", "engine": "fallback"}
     return {"intent": "unclear", "confidence": "low", "amount": "", "message": "Please tell me whether you want to withdraw money or deposit money. You can speak naturally in Hindi or English.", "engine": "fallback"}
@@ -406,7 +569,7 @@ def intent(req: IntentRequest):
     # being rejected when the model is uncertain or labels them unsupported.
     if fallback.get("intent") in {"withdrawal", "deposit"}:
         return fallback
-    if result.get("intent") in {"unclear", "greeting"} and fallback.get("intent") == "unsupported":
+    if fallback.get("intent") == "unsupported" and result.get("intent") in {"unclear", "greeting", "unsupported"}:
         return fallback
     return result
 

@@ -1,4 +1,4 @@
-"""Generate 60 linked synthetic profiles, passbooks, demo identity cards, bank cards, and clean form templates.
+"""Generate 60 linked synthetic profiles, passbooks, demo identity cards, PAN cards, and clean form templates.
 All assets are explicitly fictional and not valid for identification or payments.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ def base_card(size, title, subtitle):
 first='Aarav Vivaan Aditya Arjun Ishaan Kabir Rohan Rahul Aman Karan Ananya Aditi Diya Isha Meera Priya Simran Jasleen Navya Kavya Farah Zoya Imran Ayaan Sahil Tanya Pooja Nisha Manav Riya Harpreet Gurpreet Jaspreet Sukhdeep Ravinder Baljit Iqra Sana Yash Neha'.split()
 last='Sharma Verma Gupta Singh Kaur Kumar Mehta Bhat Dar Lone Wani Mir Rather Choudhary Thakur Malik Gill Sandhu Khan Ahmed Shah Raina Bakshi Dutta Joshi Kapoor Sood Bedi Saini Rathore'.split()
 areas=['Demo Lane, Jammu','Sample Road, Srinagar','Fictional Ward 4, Udhampur','Example Street, Anantnag','Demo Colony, Baramulla','Sample Nagar, Kathua']
-branches=['DEMO Branch - Jammu Central','DEMO Branch - Srinagar North','DEMO Branch - Udhampur','DEMO Branch - Anantnag','DEMO Branch - Baramulla','DEMO Branch - Kathua']
+branches=['Sahaj Branch - Jammu Central','Sahaj Branch - Srinagar North','Sahaj Branch - Udhampur','Sahaj Branch - Anantnag','Sahaj Branch - Baramulla','Sahaj Branch - Kathua']
 langs=['Hindi','English','Dogri','Kashmiri','Punjabi']
 profiles=[]
 for i in range(1,61):
@@ -43,7 +43,7 @@ for i in range(1,61):
        'occupation':random.choice(['Synthetic artisan','Synthetic teacher','Synthetic farmer','Synthetic shopkeeper','Synthetic pensioner','Synthetic student']),
        'account':f'99000000{i:04d}','type':random.choice(['Regular Savings','Pension Savings','Basic Savings']),
        'branch':branches[(i-1)%len(branches)],'ifsc':f'SYNB0000{i:03d}','cif':f'SYN-CIF-{i:04d}',
-       'balance_paise':random.randint(100000,25000000),'demo_id':f'DEMO-ID-{i:04d}','demo_pan':f'DEMO-PAN-{i:04d}',
+       'balance_paise':[1000,5000,10000,30000,50000,100000,200000,15000,75000,25000,8000,120000][(i-1)%12]*100,'demo_id':f'DEMO-ID-{i:04d}','demo_pan':f'DEMO-PAN-{i:04d}',
        'demo_bank_card':f'9999 0000 0000 {i:04d}','language':langs[(i-1)%5]}
     profiles.append(p)
 
@@ -52,13 +52,13 @@ conn=sqlite3.connect(DB); conn.execute('PRAGMA foreign_keys=ON')
 conn.executescript('''CREATE TABLE IF NOT EXISTS customers (customer_id INTEGER PRIMARY KEY, customer_ref TEXT NOT NULL UNIQUE, full_name TEXT NOT NULL, phone TEXT NOT NULL UNIQUE, address TEXT NOT NULL, date_of_birth TEXT NOT NULL, occupation TEXT NOT NULL DEFAULT 'Synthetic demo occupation');
 CREATE TABLE IF NOT EXISTS accounts (account_number TEXT PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE, account_type TEXT NOT NULL, branch_name TEXT NOT NULL, ifsc TEXT NOT NULL, cif TEXT NOT NULL UNIQUE, balance_paise INTEGER NOT NULL CHECK(balance_paise>=0), status TEXT NOT NULL DEFAULT 'ACTIVE');
 CREATE TABLE IF NOT EXISTS synthetic_identifications (customer_id INTEGER NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE, id_type TEXT NOT NULL, id_value TEXT NOT NULL UNIQUE, label TEXT NOT NULL DEFAULT 'SYNTHETIC DEMO VALUE - NOT VALID FOR IDENTIFICATION', PRIMARY KEY(customer_id,id_type));
-CREATE TABLE IF NOT EXISTS demo_preferences (customer_id INTEGER PRIMARY KEY REFERENCES customers(customer_id) ON DELETE CASCADE, preferred_language TEXT NOT NULL, demo_bank_card_number TEXT NOT NULL UNIQUE, demo_only INTEGER NOT NULL DEFAULT 1 CHECK(demo_only=1));''')
+CREATE TABLE IF NOT EXISTS demo_preferences (customer_id INTEGER PRIMARY KEY REFERENCES customers(customer_id) ON DELETE CASCADE, preferred_language TEXT NOT NULL, pan_card_reference TEXT NOT NULL UNIQUE, demo_only INTEGER NOT NULL DEFAULT 1 CHECK(demo_only=1));''')
 for p in profiles:
     conn.execute('INSERT INTO customers VALUES(?,?,?,?,?,?,?) ON CONFLICT(customer_id) DO UPDATE SET customer_ref=excluded.customer_ref,full_name=excluded.full_name,phone=excluded.phone,address=excluded.address,date_of_birth=excluded.date_of_birth,occupation=excluded.occupation',(p['customer_id'],p['customer_ref'],p['name'],p['phone'],p['address'],p['dob'],p['occupation']))
     conn.execute('INSERT INTO accounts VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(account_number) DO UPDATE SET customer_id=excluded.customer_id,account_type=excluded.account_type,branch_name=excluded.branch_name,ifsc=excluded.ifsc,cif=excluded.cif,balance_paise=excluded.balance_paise,status=excluded.status',(p['account'],p['customer_id'],p['type'],p['branch'],p['ifsc'],p['cif'],p['balance_paise'],'ACTIVE'))
     for typ,val in [('DEMO_ID',p['demo_id']),('DEMO_PAN',p['demo_pan'])]:
         conn.execute('INSERT INTO synthetic_identifications(customer_id,id_type,id_value) VALUES(?,?,?) ON CONFLICT(customer_id,id_type) DO UPDATE SET id_value=excluded.id_value,label=excluded.label',(p['customer_id'],typ,val))
-    conn.execute('INSERT INTO demo_preferences VALUES(?,?,?,1) ON CONFLICT(customer_id) DO UPDATE SET preferred_language=excluded.preferred_language,demo_bank_card_number=excluded.demo_bank_card_number',(p['customer_id'],p['language'],p['demo_bank_card']))
+    conn.execute('INSERT INTO demo_preferences VALUES(?,?,?,1) ON CONFLICT(customer_id) DO UPDATE SET preferred_language=excluded.preferred_language,pan_card_reference=excluded.pan_card_reference',(p['customer_id'],p['language'],p['demo_bank_card']))
 conn.commit(); conn.close()
 
 # Generate high-resolution (3x) synthetic passbooks with the account number easy to OCR.

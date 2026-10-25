@@ -13,14 +13,18 @@ for account in accounts:
 conn.commit()
 tables=['customers','accounts','synthetic_identifications','demo_preferences','demo_transactions']
 for table in tables:
-    cur=conn.execute('SELECT customer_id, preferred_language, demo_only FROM demo_preferences' if table == 'demo_preferences' else f'SELECT * FROM {table}'); headers=[d[0] for d in cur.description]; rows=cur.fetchall()
+    if table == 'accounts':
+        cur=conn.execute('SELECT *, ROUND(balance_paise / 100.0, 2) AS balance FROM accounts ORDER BY account_number')
+    else:
+        cur=conn.execute('SELECT customer_id, preferred_language, demo_only FROM demo_preferences' if table == 'demo_preferences' else f'SELECT * FROM {table}')
+    headers=[d[0] for d in cur.description]; rows=cur.fetchall()
     with (OUT/f'{table}.csv').open('w',newline='',encoding='utf-8-sig') as f:
         w=csv.writer(f); w.writerow(headers); w.writerows(rows)
     print(table,len(rows))
 # Unified lookup export for easy inspection; SQLite remains source of truth.
-rows=conn.execute('''SELECT c.customer_id,c.customer_ref,c.full_name,c.phone,c.address,c.date_of_birth,c.occupation,a.account_number,a.account_type,a.branch_name,a.ifsc,a.cif,a.balance_paise,a.status,p.preferred_language,i.id_value AS demo_id_value
+rows=conn.execute('''SELECT c.customer_id,c.customer_ref,c.full_name,c.phone,c.address,c.date_of_birth,c.occupation,a.account_number,a.account_type,a.branch_name,a.ifsc,a.cif,a.balance_paise,ROUND(a.balance_paise / 100.0, 2) AS balance,a.status,p.preferred_language,i.id_value AS demo_id_value
 FROM customers c JOIN accounts a USING(customer_id) LEFT JOIN demo_preferences p USING(customer_id) LEFT JOIN synthetic_identifications i ON i.customer_id=c.customer_id AND i.id_type='DEMO_ID' ORDER BY c.customer_id''').fetchall()
-headers=[d[0] for d in conn.execute('''SELECT c.customer_id,c.customer_ref,c.full_name,c.phone,c.address,c.date_of_birth,c.occupation,a.account_number,a.account_type,a.branch_name,a.ifsc,a.cif,a.balance_paise,a.status,p.preferred_language,i.id_value AS demo_id_value FROM customers c JOIN accounts a USING(customer_id) LEFT JOIN demo_preferences p USING(customer_id) LEFT JOIN synthetic_identifications i ON i.customer_id=c.customer_id AND i.id_type='DEMO_ID' LIMIT 0''').description]
+headers=[d[0] for d in conn.execute('''SELECT c.customer_id,c.customer_ref,c.full_name,c.phone,c.address,c.date_of_birth,c.occupation,a.account_number,a.account_type,a.branch_name,a.ifsc,a.cif,a.balance_paise,ROUND(a.balance_paise / 100.0, 2) AS balance,a.status,p.preferred_language,i.id_value AS demo_id_value FROM customers c JOIN accounts a USING(customer_id) LEFT JOIN demo_preferences p USING(customer_id) LEFT JOIN synthetic_identifications i ON i.customer_id=c.customer_id AND i.id_type='DEMO_ID' LIMIT 0''').description]
 with (OUT/'account_customer_document_lookup.csv').open('w',newline='',encoding='utf-8-sig') as f:
     w=csv.writer(f); w.writerow(headers); w.writerows(rows)
 # manifest ties each generated asset filename to its account number.

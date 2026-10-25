@@ -67,7 +67,7 @@ Sahaj uses the Google Gemini API for both flexible intent classification and liv
 ```dotenv
 GEMINI_API_KEY=your_key_here
 GEMINI_INTENT_MODEL=gemini-2.5-flash
-GEMINI_LIVE_MODEL=models/gemini-2.5-flash-native-audio-preview-12-2025
+GEMINI_LIVE_MODEL=gemini-3.8-live
 GEMINI_LIVE_VOICE=Kore
 ```
 
@@ -86,3 +86,25 @@ The voice screen asks for microphone permission, speaks the initial Hindi and En
 - The signature guidance is a browser-only overlay and is not printed on the form. It is positioned separately for withdrawal and deposit previews; exact alignment should be checked in the target browser because embedded PDF viewers vary.
 - Withdrawal amounts above the matched synthetic SQLite balance are rejected. The interface asks in the selected language whether the customer wants to see the current demo balance, then prompts for a lower amount.
 - Downloaded withdrawal and deposit drafts include a separate second page directing the customer to Counter 3 for staff review. The form preview itself remains a single-page form without the instruction overlay.
+
+
+## Language switching and voice recovery
+
+- Manual mode includes a **Switch language** control on the current workflow screen. Changing the UI language returns to that same screen and keeps the selected passbook, account, form, and entered values.
+- In Gemini Live mode, the spoken language can be changed conversationally. For example, “Keep the text in English but speak Hindi,” “Switch to Punjabi,” or “Switch back to English.” Display language and spoken language are independent preferences.
+- If Gemini Live fails, the kiosk explains that browser-based speaking support is limited to Hindi and English, while preserving the bilingual Namaste/Hello greeting. The server logs upstream Live API error code/status/message for diagnosis. The fallback does not repeatedly reconnect Gemini when the Speak button is pressed.
+- Stop listening cancels current browser speech and queued Gemini audio immediately. Speak resumes listening on the existing screen. Start over cancels active speech/audio before returning to the greeting.
+
+## Language switching and Gemini diagnostics
+
+- Say or type, for example, "मुझे स्क्रीन की भाषा पंजाबी करनी है", "screen in Hindi and speak English", "switch to Urdu". Hindi, English, Punjabi and Urdu work with or without Gemini. Names are understood in Roman, Devanagari, Gurmukhi and Urdu script.
+- Browser-voice fallback uses `pa-Guru-IN` / `ur-PK` for listening. If the browser has no Punjabi or Urdu *voice* installed, the text is shown on screen instead of being spoken.
+- If Gemini will not connect, open http://127.0.0.1:8766/api/gemini/check and read the `problem` field. The kiosk terminal also prints Google's close code and reason.
+- The proxy tries `GEMINI_LIVE_MODEL`, then `gemini-3.8-live`, `gemini-3.1-flash-live-preview`, `gemini-2.5-flash-native-audio-preview-12-2025`.
+- The customer is addressed in gender-neutral respectful form ("आप ... सकते हैं").
+
+## Voice fixes: amounts, screen language, interrupting Gemini
+
+- **Amounts are read from the whole sentence.** Gemini's transcript of what the customer said arrives in small pieces (sometimes seconds apart, after Gemini has started answering). All pieces of one sentence are now kept together and re-read as a whole, so "1" + "0" + ",000 rupees" becomes 10,000. As a second safety net, if the transcript was still cut short, the screen is repaired from the amount Gemini itself speaks back ("ten thousand rupees") — only ever raising 10 → 10,000 style truncations, only for that same sentence, and never overriding a correction.
+- **The screen follows the language being spoken.** Speaking Hindi (Devanagari or Roman) switches the screen to Hindi, English to English, and so on. Digits, "yes/no" and "rupees" never switch it. The screen stays fixed only after the customer explicitly asks for a screen language ("screen in Punjabi", "switch to English"); that lock is cleared when the session ends.
+- **Talking over Gemini stops it.** While Gemini speaks, the mic is still held back to avoid echo, but if the customer's voice is clearly louder than echo, Gemini's audio is cut immediately and the customer's words (including the first ~0.5 s) are sent on. Tune `BARGE_IN_RMS` (default `0.045`) at the top of the Gemini section in `static/app.js`: raise it if Gemini cuts itself off on loud speakers, lower it if a quiet customer cannot interrupt. A headset or lower speaker volume makes interruption most reliable. This applies to Gemini Live; the browser-voice fallback still cannot be interrupted.

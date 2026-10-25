@@ -1,0 +1,50 @@
+[
+  {
+    "file": "01-clear-front.png",
+    "label": "Clear front cover \u00b7 account number near top",
+    "source": "passbook-001.png",
+    "image_condition": "clear",
+    "width": 1800,
+    "height": 1200
+  },
+  {
+    "file": "02-rotated-90.png",
+    "label": "Rotated 90\u00b0",
+    "source": "passbook-008.png",
+    "image_condition": "rotate90",
+    "width": 1800,
+    "height": 1200
+  },
+  {
+    "file": "03-upside-down.png",
+    "label": "Rotated 180\u00b0",
+    "source": "passbook-015.png",
+    "image_condition": "rotate180",
+    "width": 1800,
+    "height": 1200
+  },
+  {
+    "file": "04-slightly-blurred.png",
+    "label": "Slightly blurred photo",
+    "source": "passbook-022.png",
+    "image_condition": "blur",
+    "width": 1200,
+    "height": 1800
+  },
+  {
+    "file": "05-low-contrast.png",
+    "label": "Low-contrast / dim photo",
+    "source": "passbook-031.png",
+    "image_condition": "dim",
+    "width": 1800,
+    "height": 1200
+  },
+  {
+    "file": "06-cropped-angle.png",
+    "label": "Slightly cropped and tilted photo",
+    "source": "passbook-044.png",
+    "image_condition": "crop_tilt",
+    "width": 1194,
+    "height": 1750
+  }
+]
