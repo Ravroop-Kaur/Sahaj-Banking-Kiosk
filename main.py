@@ -18,10 +18,12 @@ from starlette.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from urllib import error as urlerror, request as urlrequest
+from urllib.parse import quote
 from demo_database import DB_PATH, find_account, initialize_database
 import voice_fallback
 import passbook_ocr
 import gemini_models
+import live_protocol
 from ratelimit import rate_limit
 
 ROOT = Path(__file__).parent
@@ -174,7 +176,6 @@ async def gemini_live_proxy(client: WebSocket):
         return
     upstream = None
     try:
-        from urllib.parse import quote
         connect = _ws_connect()
         url = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=" + quote(api_key)
         # The browser's first message is the setup message. Keep it so we can retry other models.
@@ -184,6 +185,8 @@ async def gemini_live_proxy(client: WebSocket):
             raise ValueError("The first message from the browser must be a Gemini setup message")
         failures: list[str] = []
         first_reply = None
+        connected_model = ""
+        recent_kinds: list[str] = []  # last non-audio browser messages, for the close-code log line
         for model in _live_model_candidates():
             payload = json.loads(first)
             payload["setup"]["model"] = "models/" + model
@@ -205,6 +208,7 @@ async def gemini_live_proxy(client: WebSocket):
                 if err:
                     raise RuntimeError(err)
                 upstream, first_reply = conn, (text if text is not None else reply)
+                connected_model = model
                 break
             except Exception as exc:
                 code = getattr(exc, "code", None)
@@ -228,12 +232,20 @@ async def gemini_live_proxy(client: WebSocket):
             await client.send_text(first_reply)
 
         async def browser_to_gemini():
+            first_after_setup = True  # the greeting; every later text turn must suit the connected model
             while True:
                 message = await client.receive()
                 if message["type"] == "websocket.disconnect":
                     raise WebSocketDisconnect()
                 if message.get("text") is not None:
-                    await upstream.send(message["text"])
+                    # Gemini 3.x Live closes the session if a clientContent text turn arrives mid-session
+                    # (the silence re-ask, language changes, balance prompt...). Send those as realtimeInput.text.
+                    frame, kind = live_protocol.adapt_client_frame(message["text"], connected_model, first_after_setup)
+                    first_after_setup = False
+                    if kind != "audio":
+                        recent_kinds.append(kind)
+                        del recent_kinds[:-12]
+                    await upstream.send(frame)
                 elif message.get("bytes") is not None:
                     await upstream.send(message["bytes"])
 
@@ -263,7 +275,7 @@ async def gemini_live_proxy(client: WebSocket):
         close_code = getattr(upstream, "close_code", None)
         close_reason = getattr(upstream, "close_reason", "") or ""
         if close_code not in (None, 1000, 1001):
-            print(f"[Gemini Live] Google closed the session: code={close_code} reason={close_reason}", flush=True)
+            print("[Gemini Live] " + live_protocol.describe_close(close_code, close_reason, recent_kinds), flush=True)
             try:
                 await client.send_json({"proxyError": f"Google ended the Gemini Live session (code {close_code}): {close_reason[:200]}"})
             except Exception:

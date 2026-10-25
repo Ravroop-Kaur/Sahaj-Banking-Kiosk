@@ -1,9 +1,9 @@
-import asyncio, json, re
+import asyncio
 from io import BytesIO
 from pathlib import Path
 from starlette.datastructures import Headers
 from starlette.datastructures import UploadFile
-from demo_database import find_account, connect, DB_PATH
+from demo_database import find_account, connect
 from main import lookup, PrepareRequest, prepare, create_sample_form_pdf, SampleFormRequest, _blank_withdrawal_pdf
 
 ROOT = Path(__file__).parent

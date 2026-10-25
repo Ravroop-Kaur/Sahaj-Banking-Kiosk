@@ -1,5 +1,4 @@
 """Tests for the server-side voice fallback. Run: python -m pytest test_voice_fallback.py (or python -m unittest)."""
-import io
 import json
 import struct
 import unittest

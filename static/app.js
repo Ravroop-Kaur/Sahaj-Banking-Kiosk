@@ -184,6 +184,7 @@ let geminiSocket=null, micAudioContext=null, micProcessor=null, micSource=null, 
 // than echo in BARGE_IN_FRAMES of the last 5 mic frames (~85 ms each), Gemini is cut off at once and the held-back audio is sent so no words are lost.
 // Raise BARGE_IN_RMS if Gemini cuts itself off on loud speakers; lower it if a quiet customer cannot interrupt.
 const BARGE_IN_RMS=0.045, BARGE_IN_FRAMES=3, BARGE_IN_PREROLL=7;
+let bargeInBlockedUntil=0; // set by startGreetingWatchdog: barge-in is ignored until this time so the greeting's own echo cannot cut it off
 let geminiGenerating=false, geminiDropAudio=false, geminiBargedInAt=0, bargeInHits=[], bargeInPreRoll=[], geminiOutText='';
 function pcmToBase64(floatSamples){const pcm=new Int16Array(floatSamples.length);for(let i=0;i<floatSamples.length;i++){const v=Math.max(-1,Math.min(1,floatSamples[i]));pcm[i]=v<0?v*32768:v*32767}const bytes=new Uint8Array(pcm.buffer);let binary='';for(let i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);return btoa(binary)}
 function downsampleTo16k(input,sourceRate){if(sourceRate===16000)return input;const ratio=sourceRate/16000,outLength=Math.floor(input.length/ratio),out=new Float32Array(outLength);for(let i=0;i<outLength;i++){const start=Math.floor(i*ratio),end=Math.min(Math.floor((i+1)*ratio),input.length);let sum=0;for(let j=start;j<end;j++)sum+=input[j];out[i]=sum/Math.max(1,end-start)}return out}
@@ -267,7 +268,10 @@ async function connectRealtimeVoice(stream){
   geminiSocket.onmessage=event=>{let m;try{m=JSON.parse(event.data)}catch{return}if(m.proxyError){if(geminiTryReconnect('proxy: '+m.proxyError))return;fallbackToBrowserVoice(m.proxyError);return}if(m.sessionResumptionUpdate&&m.sessionResumptionUpdate.newHandle&&m.sessionResumptionUpdate.resumable!==false)geminiResumeHandle=m.sessionResumptionUpdate.newHandle;if(m.goAway)console.info('[gemini] server will close soon',m.goAway);if(m.setupComplete&&!geminiSetupDone){geminiSetupDone=true;geminiEverReady=true;clearTimeout(geminiStableTimer);geminiStableTimer=setTimeout(()=>{geminiReconnects=0},60000);setDevBadge('live');geminiReady=true;geminiConnectInProgress=false;hideLoading();setListeningVisual(false);$('#voiceStatus').textContent='';$('#listen').hidden=true;$('#stop').hidden=true;$('#listening').hidden=true;if(geminiResuming){geminiResuming=false;return}micSource=micAudioContext.createMediaStreamSource(stream);micProcessor=micAudioContext.createScriptProcessor(4096,1,1);micProcessor.onaudioprocess=e=>{if(!geminiReady||geminiMicPaused||geminiSocket?.readyState!==WebSocket.OPEN)return;const mono=e.inputBuffer.getChannelData(0);let energy=0;for(let i=0;i<mono.length;i++)energy+=mono[i]*mono[i];const rms=Math.sqrt(energy/Math.max(1,mono.length));const resampled=downsampleTo16k(mono,micAudioContext.sampleRate);
       if(geminiSpeaking||Date.now()<geminiMuteUntil||window.speechSynthesis?.speaking){
         /* Gemini is talking: do not stream the mic (echo), but listen for the customer talking over it. */
-        if(geminiSpeaking&&Date.now()-lastModelAudioAt>3000&&!(playbackContext&&playbackContext.currentTime<playbackCursor-0.05))geminiSpeaking=false;bargeInHits=[];bargeInPreRoll=[];return;bargeInPreRoll.push(new Float32Array(resampled));if(bargeInPreRoll.length>BARGE_IN_PREROLL)bargeInPreRoll.shift();
+        if(geminiSpeaking&&Date.now()-lastModelAudioAt>3000&&!(playbackContext&&playbackContext.currentTime<playbackCursor-0.05))geminiSpeaking=false;
+        /* Right after the greeting starts, ignore barge-in for a few seconds (bargeInBlockedUntil) so the opening echo cannot cut it off. Otherwise fall through to the barge-in detection below. */
+        if(Date.now()<bargeInBlockedUntil){bargeInHits=[];bargeInPreRoll=[];return}
+        bargeInPreRoll.push(new Float32Array(resampled));if(bargeInPreRoll.length>BARGE_IN_PREROLL)bargeInPreRoll.shift();
         bargeInHits.push(rms>BARGE_IN_RMS?1:0);if(bargeInHits.length>5)bargeInHits.shift();
         if(bargeInHits.reduce((a,b)=>a+b,0)<BARGE_IN_FRAMES)return;
         handleGeminiBargeIn();for(const frame of bargeInPreRoll)sendGeminiMic(frame);bargeInPreRoll=[];bargeInHits=[];
@@ -850,7 +854,6 @@ function halfNumberValue(text){const t=(text||'').toLowerCase();const unit=/(lak
 function browserSpeak(text,lang){try{if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(text);u.lang=lang;window.speechSynthesis.speak(u)}catch{}}
 function startGreetingWatchdog(text,code){const t0=Date.now();bargeInBlockedUntil=t0+9000;setTimeout(()=>{if(lastModelAudioAt>=t0||mode!=='voice'||flowStage!=='hello')return;if(code==='bi'){const[h,e]=text.split('|');browserSpeak(h,'hi-IN');browserSpeak(e,'en-IN')}else browserSpeak(text,synthLocale(code))},7000)}
 
-let bargeInBlockedUntil=0;
 function balanceSpeech(code){const c=['en','hi','pa','ur'].includes(code)?code:'hi';return{
   en:'I am showing your balance on the screen. Now please tell me a lower amount to withdraw.',
   hi:'आपका बैलेंस स्क्रीन पर दिखा रहे हैं। अब कृपया निकालने के लिए कम राशि बताइए।',
