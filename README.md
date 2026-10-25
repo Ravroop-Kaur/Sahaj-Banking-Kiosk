@@ -66,7 +66,8 @@ Sahaj uses the Google Gemini API for both flexible intent classification and liv
 
 ```dotenv
 GEMINI_API_KEY=your_key_here
-GEMINI_INTENT_MODEL=gemini-2.5-flash
+GEMINI_INTENT_MODEL=gemini-3.6-flash
+GEMINI_OCR_MODEL=gemini-3.6-flash
 GEMINI_LIVE_MODEL=gemini-3.8-live
 GEMINI_LIVE_VOICE=Kore
 ```

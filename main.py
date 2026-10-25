@@ -292,6 +292,13 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
         if image.width * image.height > 50_000_000:
             raise HTTPException(413, "Image dimensions are too large to process safely.")
         image = image.convert("RGB")
+        # On hosts without local OCR, Gemini reads the normalized original directly.
+        # Creating eight threshold/rotation variants adds CPU time but is not used.
+        if not shutil.which("tesseract") and not (sys.platform == "win32" and shutil.which("powershell.exe")):
+            gemini_copy = image.copy()
+            gemini_copy.thumbnail((1800, 1800))
+            gemini_copy.save(folder / "original.jpg", format="JPEG", quality=85, optimize=True)
+            return [folder / "original.jpg"]
         min_side = min(image.size)
         scale = min(3.0, max(1.0, 1600 / max(min_side, 1)))
         if scale > 1:
@@ -344,12 +351,13 @@ def _gemini_read_passbook(folder: Path) -> str:
             raise RuntimeError("No image was available to read.")
         image_bytes, mime = paths[0].read_bytes(), "image/png"
     models = []
-    for name in [os.getenv("GEMINI_OCR_MODEL", "").strip(), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]:
+    # Prefer current multimodal models and keep the fallback chain short.
+    for name in [os.getenv("GEMINI_OCR_MODEL", "").strip(), "gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"]:
         if name and name not in models:
             models.append(name)
     payload = {
         "contents": [{"role": "user", "parts": [
-            {"text": "This is a photo of a synthetic demo bank passbook. It may be rotated, upside down or slightly blurred. Transcribe ALL printed text exactly as written, line by line, keeping labels such as 'Account Number' next to their values. Output plain text only."},
+            {"text": "Read this synthetic demo bank passbook image. It may be rotated or upside down. Extract ONLY the printed account number (usually 8–18 digits) explicitly labelled Account Number, Account No, or A/C No. Ignore CIF numbers, phone numbers, balances, dates, and transaction numbers. Output exactly one line: Account Number: <digits>. If the labelled account number cannot be read confidently, output exactly: Account Number: UNCERTAIN. Do not guess digits."},
             {"inlineData": {"mimeType": mime, "data": base64.b64encode(image_bytes).decode("ascii")}}]}],
         "generationConfig": {"temperature": 0},
     }
@@ -480,7 +488,7 @@ async def ocr_passbook(file: UploadFile = File(...)):
             notice = "No account number could be read confidently. Try a clearer photo or type the number manually. No other details were extracted for lookup."
         return {"engine": engine, "fields": {
             "account_id": {"value": account_id, "confidence": "review" if account_id else "uncertain"}},
-            "quality": {"attempts": variant_count, "orientations": [0, 90, 180, 270], "local_only": engine != "Gemini vision"}, "notice": notice}
+            "quality": {"attempts": variant_count, "orientations": ([0] if engine == "Gemini vision" else [0, 90, 180, 270]), "local_only": engine != "Gemini vision"}, "notice": notice}
     except HTTPException:
         raise
     except Exception as exc:
@@ -499,7 +507,7 @@ def _intent_from_model(text: str, language: str) -> dict | None:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         return None
-    model = os.getenv("GEMINI_INTENT_MODEL", "gemini-3.8-flash").strip() or "gemini-3.8-flash"
+    model = os.getenv("GEMINI_INTENT_MODEL", "gemini-3.6-flash").strip() or "gemini-3.6-flash"
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     system_prompt = (
         "You classify a customer's spoken banking request for a demo form-preparation kiosk. "
