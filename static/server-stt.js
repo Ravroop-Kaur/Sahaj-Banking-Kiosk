@@ -1,6 +1,6 @@
 // Server-side speech recognition fallback. Loaded before app.js; shares its global scope.
 // ---------- Server-side speech recognition fallback (works in any browser with a microphone) ----------
-let serverSTTForced=false, serverRec=null;
+let serverSTTForced=!!(navigator.brave), serverRec=null; // Brave disables Google-backed Web Speech, so use server transcription from the start
 const SERVER_STT={threshold:0.015,startMs:120,silenceMs:1300,maxMs:15000,idleMs:12000,minMs:350};
 function encodeWav16k(chunks,inRate){
   let n=0;for(const c of chunks)n+=c.length;const all=new Float32Array(n);let o=0;for(const c of chunks){all.set(c,o);o+=c.length}
