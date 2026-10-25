@@ -67,7 +67,7 @@ def home():
 @app.get("/api/health")
 def health():
     initialize_database()
-    return {"status": "ok", "ocr": "local-windows-ocr-or-tesseract", "speech": "gemini-configured" if os.getenv("GEMINI_API_KEY") else "gemini-key-required", "pdf_template": "synthetic-clean-forms", "bank_integration": False, "database": str(DB_PATH), "synthetic_database": True}
+    return {"status": "ok", "ocr": "local-windows-ocr-or-tesseract", "ocr_engine_available": bool(shutil.which("tesseract")) or (sys.platform == "win32" and bool(shutil.which("powershell.exe"))) or bool(os.getenv("GEMINI_API_KEY", "").strip()), "speech": "gemini-configured" if os.getenv("GEMINI_API_KEY") else "gemini-key-required", "pdf_template": "synthetic-clean-forms", "bank_integration": False, "database": str(DB_PATH), "synthetic_database": True}
 
 GEMINI_LIVE_DEFAULT_MODELS = [
     "gemini-3.8-live",
@@ -313,6 +313,37 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
             raise RuntimeError("Windows local image preprocessing produced no OCR variants.")
         return paths
 
+def _gemini_read_passbook(folder: Path) -> str:
+    """Transcribe the passbook text with Gemini vision so the normal account-number parsing can run on it."""
+    import base64
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("No OCR engine is installed on this server and GEMINI_API_KEY is not set. Set GEMINI_API_KEY (or install Tesseract) and restart.")
+    paths = sorted(folder.glob("gray_0.png")) or sorted(folder.glob("*.png"))
+    if not paths:
+        raise RuntimeError("No image was available to read.")
+    model = os.getenv("GEMINI_OCR_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    payload = {
+        "contents": [{"role": "user", "parts": [
+            {"text": "This is a photo of a synthetic demo bank passbook. It may be rotated. Transcribe ALL printed text exactly as written, line by line, keeping labels such as 'Account Number' next to their values. Output plain text only."},
+            {"inlineData": {"mimeType": "image/png", "data": base64.b64encode(paths[0].read_bytes()).decode("ascii")}}]}],
+        "generationConfig": {"temperature": 0},
+    }
+    req = urlrequest.Request(endpoint, data=json.dumps(payload).encode("utf-8"),
+                             headers={"Content-Type": "application/json", "x-goog-api-key": api_key}, method="POST")
+    try:
+        with urlrequest.urlopen(req, timeout=40) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except (urlerror.URLError, TimeoutError, ValueError) as exc:
+        raise RuntimeError(f"Could not read the passbook with Gemini: {exc}")
+    parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
+    text = "\n".join(part.get("text", "") for part in parts)
+    if not text.strip():
+        raise RuntimeError("Gemini returned no text for this passbook photo.")
+    return text
+
+
 def _recognize_local_variants(folder: Path) -> tuple[str, str]:
     """Run fast local OCR first on upright variants; broaden only if account number is not found."""
     tesseract = shutil.which("tesseract")
@@ -345,7 +376,8 @@ def _recognize_local_variants(folder: Path) -> tuple[str, str]:
         candidates = [item.get("text", "") for item in variants]
         engine = "Windows OCR (local)"
     else:
-        raise RuntimeError("No local OCR engine is available on this computer.")
+        # No Tesseract/Windows OCR on this server (e.g. Render's Python runtime): read the photo with Gemini instead.
+        return _gemini_read_passbook(folder), "Gemini vision"
 
     def score(text: str) -> tuple[int, int, int, int]:
         normalized = re.sub(r"\s+", " ", text).lower()
