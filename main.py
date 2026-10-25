@@ -344,7 +344,7 @@ def _gemini_read_passbook(folder: Path) -> str:
             raise RuntimeError("No image was available to read.")
         image_bytes, mime = paths[0].read_bytes(), "image/png"
     models = []
-    for name in [os.getenv("GEMINI_OCR_MODEL", "").strip(), "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"]:
+    for name in [os.getenv("GEMINI_OCR_MODEL", "").strip(), "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]:
         if name and name not in models:
             models.append(name)
     payload = {
@@ -499,7 +499,7 @@ def _intent_from_model(text: str, language: str) -> dict | None:
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         return None
-    model = os.getenv("GEMINI_INTENT_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    model = os.getenv("GEMINI_INTENT_MODEL", "gemini-3.8-flash").strip() or "gemini-3.8-flash"
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
     system_prompt = (
         "You classify a customer's spoken banking request for a demo form-preparation kiosk. "
