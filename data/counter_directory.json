@@ -1,0 +1,28 @@
+{
+  "counter_1": {
+    "name": "Withdrawal & Deposit",
+    "services": [
+      "Cash withdrawal",
+      "Pension withdrawal",
+      "Cash deposit"
+    ]
+  },
+  "counter_2": {
+    "name": "Account & Other Services",
+    "services": [
+      "Account opening",
+      "Transfer request",
+      "Customer details update",
+      "Synthetic PAN/Aadhaar record assistance"
+    ]
+  },
+  "counter_3": {
+    "name": "Document Submission",
+    "services": [
+      "Submit printed draft",
+      "Staff review",
+      "Complete official KYC directly with bank staff"
+    ],
+    "next_step": "After PDF download, go to Counter 3 with the printed draft. This demo does not submit transactions."
+  }
+}

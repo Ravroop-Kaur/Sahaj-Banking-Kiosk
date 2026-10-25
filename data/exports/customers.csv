@@ -1,0 +1,61 @@
+﻿customer_id,customer_ref,full_name,phone,address,date_of_birth,occupation
+1,SYN-CUST-001,Nisha Rather,0000001001,"Sample Road, Srinagar (fictional)",1962-11-24,Synthetic pensioner
+2,SYN-CUST-002,Pooja Mir,0000001002,"Sample Road, Srinagar (fictional)",1999-12-05,Synthetic artisan
+3,SYN-CUST-003,Sahil Shah,0000001003,"Demo Lane, Jammu (fictional)",1972-10-20,Synthetic artisan
+4,SYN-CUST-004,Sana Rathore,0000001004,"Demo Lane, Jammu (fictional)",1988-11-02,Synthetic artisan
+5,SYN-CUST-005,Pooja Malik,0000001005,"Sample Road, Srinagar (fictional)",1981-01-01,Synthetic student
+6,SYN-CUST-006,Sahil Sandhu,0000001006,"Example Street, Anantnag (fictional)",1967-10-11,Synthetic teacher
+7,SYN-CUST-007,Riya Shah,0000001007,"Demo Lane, Jammu (fictional)",1973-05-08,Synthetic pensioner
+8,SYN-CUST-008,Farah Kumar,0000001008,"Sample Nagar, Kathua (fictional)",1970-09-10,Synthetic shopkeeper
+9,SYN-CUST-009,Jasleen Bedi,0000001009,"Demo Colony, Baramulla (fictional)",1975-01-22,Synthetic artisan
+10,SYN-CUST-010,Kabir Kaur,0000001010,"Example Street, Anantnag (fictional)",1989-01-26,Synthetic pensioner
+11,SYN-CUST-011,Imran Rather,0000001011,"Sample Road, Srinagar (fictional)",1961-11-09,Synthetic student
+12,SYN-CUST-012,Kabir Kumar,0000001012,"Demo Lane, Jammu (fictional)",1998-10-07,Synthetic student
+13,SYN-CUST-013,Pooja Dutta,0000001013,"Fictional Ward 4, Udhampur (fictional)",1968-11-16,Synthetic student
+14,SYN-CUST-014,Neha Rathore,0000001014,"Demo Lane, Jammu (fictional)",1979-06-08,Synthetic pensioner
+15,SYN-CUST-015,Diya Bhat,0000001015,"Sample Nagar, Kathua (fictional)",1989-04-11,Synthetic teacher
+16,SYN-CUST-016,Jaspreet Bhat,0000001016,"Sample Nagar, Kathua (fictional)",1953-03-06,Synthetic shopkeeper
+17,SYN-CUST-017,Sukhdeep Mir,0000001017,"Sample Nagar, Kathua (fictional)",1963-07-15,Synthetic student
+18,SYN-CUST-018,Priya Thakur,0000001018,"Sample Road, Srinagar (fictional)",1963-04-01,Synthetic pensioner
+19,SYN-CUST-019,Ravinder Bhat,0000001019,"Demo Colony, Baramulla (fictional)",1959-09-24,Synthetic pensioner
+20,SYN-CUST-020,Aditi Wani,0000001020,"Sample Road, Srinagar (fictional)",1993-04-19,Synthetic student
+21,SYN-CUST-021,Simran Kapoor,0000001021,"Sample Nagar, Kathua (fictional)",2002-06-22,Synthetic shopkeeper
+22,SYN-CUST-022,Sahil Choudhary,0000001022,"Sample Road, Srinagar (fictional)",1970-02-16,Synthetic shopkeeper
+23,SYN-CUST-023,Aarav Gupta,0000001023,"Sample Road, Srinagar (fictional)",1986-11-07,Synthetic student
+24,SYN-CUST-024,Baljit Bakshi,0000001024,"Demo Lane, Jammu (fictional)",1988-12-04,Synthetic student
+25,SYN-CUST-025,Vivaan Khan,0000001025,"Sample Nagar, Kathua (fictional)",1980-07-08,Synthetic shopkeeper
+26,SYN-CUST-026,Rahul Thakur,0000001026,"Demo Lane, Jammu (fictional)",1961-05-11,Synthetic student
+27,SYN-CUST-027,Ayaan Gupta,0000001027,"Example Street, Anantnag (fictional)",1957-09-18,Synthetic farmer
+28,SYN-CUST-028,Kabir Gupta,0000001028,"Sample Nagar, Kathua (fictional)",1950-03-25,Synthetic shopkeeper
+29,SYN-CUST-029,Harpreet Kumar,0000001029,"Demo Colony, Baramulla (fictional)",1992-03-16,Synthetic shopkeeper
+30,SYN-CUST-030,Vivaan Choudhary,0000001030,"Demo Lane, Jammu (fictional)",1998-01-24,Synthetic shopkeeper
+31,SYN-CUST-031,Karan Sandhu,0000001031,"Example Street, Anantnag (fictional)",1975-03-21,Synthetic student
+32,SYN-CUST-032,Zoya Dutta,0000001032,"Sample Nagar, Kathua (fictional)",1986-05-09,Synthetic shopkeeper
+33,SYN-CUST-033,Nisha Rathore,0000001033,"Fictional Ward 4, Udhampur (fictional)",1968-12-22,Synthetic student
+34,SYN-CUST-034,Manav Bakshi,0000001034,"Sample Road, Srinagar (fictional)",1962-07-21,Synthetic farmer
+35,SYN-CUST-035,Arjun Gupta,0000001035,"Sample Road, Srinagar (fictional)",2002-01-04,Synthetic pensioner
+36,SYN-CUST-036,Sana Choudhary,0000001036,"Fictional Ward 4, Udhampur (fictional)",1988-05-21,Synthetic teacher
+37,SYN-CUST-037,Priya Malik,0000001037,"Sample Nagar, Kathua (fictional)",1958-05-22,Synthetic student
+38,SYN-CUST-038,Neha Wani,0000001038,"Demo Colony, Baramulla (fictional)",1968-02-01,Synthetic shopkeeper
+39,SYN-CUST-039,Rahul Saini,0000001039,"Sample Road, Srinagar (fictional)",1982-01-01,Synthetic shopkeeper
+40,SYN-CUST-040,Zoya Sandhu,0000001040,"Fictional Ward 4, Udhampur (fictional)",1999-07-02,Synthetic teacher
+41,SYN-CUST-041,Karan Verma,0000001041,"Demo Lane, Jammu (fictional)",1957-08-27,Synthetic pensioner
+42,SYN-CUST-042,Harpreet Kumar,0000001042,"Fictional Ward 4, Udhampur (fictional)",1956-10-01,Synthetic farmer
+43,SYN-CUST-043,Arjun Kaur,0000001043,"Sample Road, Srinagar (fictional)",1972-05-08,Synthetic pensioner
+44,SYN-CUST-044,Priya Sandhu,0000001044,"Demo Colony, Baramulla (fictional)",1992-06-22,Synthetic artisan
+45,SYN-CUST-045,Sahil Gupta,0000001045,"Fictional Ward 4, Udhampur (fictional)",1978-12-14,Synthetic farmer
+46,SYN-CUST-046,Priya Singh,0000001046,"Demo Lane, Jammu (fictional)",1993-11-13,Synthetic teacher
+47,SYN-CUST-047,Ayaan Lone,0000001047,"Example Street, Anantnag (fictional)",1985-05-12,Synthetic teacher
+48,SYN-CUST-048,Ayaan Raina,0000001048,"Sample Nagar, Kathua (fictional)",1956-02-12,Synthetic artisan
+49,SYN-CUST-049,Sana Kaur,0000001049,"Example Street, Anantnag (fictional)",1980-07-27,Synthetic shopkeeper
+50,SYN-CUST-050,Riya Kumar,0000001050,"Sample Road, Srinagar (fictional)",1975-12-14,Synthetic farmer
+51,SYN-CUST-051,Sana Gill,0000001051,"Demo Lane, Jammu (fictional)",1992-09-20,Synthetic student
+52,SYN-CUST-052,Sahil Mir,0000001052,"Demo Lane, Jammu (fictional)",1974-07-26,Synthetic artisan
+53,SYN-CUST-053,Kabir Sandhu,0000001053,"Fictional Ward 4, Udhampur (fictional)",1999-01-02,Synthetic artisan
+54,SYN-CUST-054,Aditya Sandhu,0000001054,"Sample Road, Srinagar (fictional)",1968-07-11,Synthetic shopkeeper
+55,SYN-CUST-055,Jaspreet Saini,0000001055,"Sample Road, Srinagar (fictional)",1974-04-19,Synthetic teacher
+56,SYN-CUST-056,Farah Saini,0000001056,"Demo Lane, Jammu (fictional)",1969-08-06,Synthetic pensioner
+57,SYN-CUST-057,Kabir Rather,0000001057,"Demo Lane, Jammu (fictional)",1957-05-19,Synthetic student
+58,SYN-CUST-058,Aditi Sood,0000001058,"Sample Road, Srinagar (fictional)",2000-05-20,Synthetic shopkeeper
+59,SYN-CUST-059,Manav Gill,0000001059,"Example Street, Anantnag (fictional)",1994-09-16,Synthetic shopkeeper
+60,SYN-CUST-060,Imran Raina,0000001060,"Example Street, Anantnag (fictional)",1993-02-02,Synthetic pensioner

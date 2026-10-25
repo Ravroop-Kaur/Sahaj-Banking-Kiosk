@@ -1,0 +1,313 @@
+{
+  "withdrawal": {
+    "template": "static/withdrawal_template.jpg",
+    "page": {
+      "width": 581,
+      "height": 373
+    },
+    "text_fields": {
+      "name": {
+        "x": 35,
+        "y": 227,
+        "font_size": 8,
+        "max_width": 500
+      },
+      "date": {
+        "x": 430,
+        "y": 352,
+        "font_size": 7,
+        "max_width": 100
+      },
+      "amount_figures": {
+        "x": 35,
+        "y": 134,
+        "font_size": 8,
+        "max_width": 500
+      },
+      "amount_words": {
+        "x": 35,
+        "y": 93,
+        "font_size": 7,
+        "max_width": 500
+      },
+      "draft_label": {
+        "x": 450,
+        "y": 352,
+        "font_size": 7,
+        "max_width": 90
+      }
+    },
+    "digit_fields": {
+      "account_id": {
+        "first_digit_x": 302,
+        "step_x": 16.4,
+        "baseline_y": 190,
+        "font_size": 8,
+        "cells": 12
+      },
+      "phone": {
+        "first_digit_x": 121,
+        "step_x": 18,
+        "baseline_y": 41,
+        "font_size": 7,
+        "cells": 10
+      }
+    },
+    "signature_marker": {
+      "x": 360,
+      "y": 65,
+      "width": 170,
+      "height": 18,
+      "label_x": 400,
+      "label_y": 72,
+      "font_size": 7
+    }
+  },
+  "sample_forms": {
+    "deposit": {
+      "template": "static/templates/deposit_challan.jpeg",
+      "page": {
+        "width": 722,
+        "height": 289
+      },
+      "fields": {
+        "name": [
+          35,
+          177.12,
+          8,
+          652
+        ],
+        "branch": [
+          35,
+          113.12,
+          8,
+          652
+        ],
+        "amount": [
+          35,
+          49.120000000000005,
+          8,
+          652
+        ]
+      },
+      "digit_fields": {
+        "account": {
+          "first_digit_x": 40.1,
+          "step_x": 15,
+          "baseline_y": 147.6,
+          "font_size": 12,
+          "cells": 12
+        },
+        "phone": {
+          "first_digit_x": 40.1,
+          "step_x": 15,
+          "baseline_y": 83.6,
+          "font_size": 12,
+          "cells": 10
+        }
+      }
+    },
+    "transaction": {
+      "template": "static/templates/idfc_transaction.jpeg",
+      "page": {
+        "width": 458,
+        "height": 669
+      },
+      "fields": {
+        "branch": [
+          35,
+          405.2266666666667,
+          5,
+          388
+        ],
+        "beneficiary": [
+          35,
+          318.3933333333334,
+          5,
+          388
+        ],
+        "beneficiaryAccount": [
+          35,
+          231.56,
+          5,
+          388
+        ],
+        "ifsc": [
+          35,
+          144.7266666666667,
+          5,
+          388
+        ],
+        "amount": [
+          35,
+          57.89333333333343,
+          5,
+          388
+        ]
+      },
+      "digit_fields": {
+        "account": {
+          "first_digit_x": 40.1,
+          "step_x": 15,
+          "baseline_y": 502.2166666666667,
+          "font_size": 8,
+          "cells": 12
+        }
+      }
+    },
+    "sbi-account-opening": {
+      "template": "static/templates/sbi_account_opening.jpeg",
+      "page": {
+        "width": 298,
+        "height": 480
+      },
+      "fields": {
+        "name": [
+          35,
+          341.14,
+          5,
+          228
+        ],
+        "branch": [
+          35,
+          299.64,
+          5,
+          228
+        ],
+        "dob": [
+          35,
+          258.14,
+          5,
+          228
+        ],
+        "address": [
+          35,
+          216.64,
+          5,
+          228
+        ],
+        "occupation": [
+          35,
+          133.64,
+          5,
+          228
+        ],
+        "demoId": [
+          35,
+          92.13999999999999,
+          5,
+          228
+        ],
+        "demoPan": [
+          35,
+          50.639999999999986,
+          5,
+          228
+        ]
+      },
+      "digit_fields": {
+        "mobile": {
+          "first_digit_x": 40.1,
+          "step_x": 15,
+          "baseline_y": 178.95,
+          "font_size": 5,
+          "cells": 10
+        }
+      }
+    },
+    "account-opening": {
+      "template": "static/templates/dtb_account_opening.jpeg",
+      "page": {
+        "width": 298,
+        "height": 480
+      },
+      "fields": {
+        "name": [
+          35,
+          336.15999999999997,
+          5,
+          228
+        ],
+        "branch": [
+          35,
+          288.7314285714285,
+          5,
+          228
+        ],
+        "address": [
+          35,
+          241.30285714285714,
+          5,
+          228
+        ],
+        "phone": [
+          35,
+          193.87428571428575,
+          5,
+          228
+        ],
+        "email": [
+          35,
+          146.4457142857143,
+          5,
+          228
+        ],
+        "demoId": [
+          35,
+          99.01714285714286,
+          5,
+          228
+        ],
+        "demoPan": [
+          35,
+          51.58857142857141,
+          5,
+          228
+        ]
+      },
+      "digit_fields": {}
+    },
+    "dcb-request": {
+      "template": "static/templates/dcb_customer_request.jpeg",
+      "page": {
+        "width": 768,
+        "height": 1024
+      },
+      "fields": {
+        "name": [
+          35,
+          772.832,
+          9,
+          698
+        ],
+        "branch": [
+          35,
+          422.432,
+          9,
+          698
+        ],
+        "request": [
+          35,
+          247.23200000000008,
+          9,
+          698
+        ],
+        "newContact": [
+          35,
+          72.03200000000004,
+          9,
+          698
+        ]
+      },
+      "digit_fields": {
+        "account": {
+          "first_digit_x": 40.1,
+          "step_x": 15,
+          "baseline_y": 620.1600000000001,
+          "font_size": 13,
+          "cells": 12
+        }
+      }
+    }
+  }
+}

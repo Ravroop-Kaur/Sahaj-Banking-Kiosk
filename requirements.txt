@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+# Optional local OCR; install Tesseract OCR separately for a working OCR engine.
+pillow
+pytesseract
+pytest
+sarvamai
+
+python-dotenv
