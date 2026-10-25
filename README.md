@@ -100,7 +100,7 @@ The voice screen asks for microphone permission, speaks the initial Hindi and En
 
 - Say or type, for example, "मुझे स्क्रीन की भाषा पंजाबी करनी है", "screen in Hindi and speak English", "switch to Urdu". Hindi, English, Punjabi and Urdu work with or without Gemini. Names are understood in Roman, Devanagari, Gurmukhi and Urdu script.
 - Browser-voice fallback uses `pa-Guru-IN` / `ur-PK` for listening. If the browser has no Punjabi or Urdu *voice* installed, the text is shown on screen instead of being spoken.
-- If Gemini will not connect, open http://127.0.0.1:8766/api/gemini/check and read the `problem` field. The kiosk terminal also prints Google's close code and reason.
+- If Gemini will not connect, open http://127.0.0.1:8766/api/voice/check and read the `problem` field. The kiosk terminal also prints Google's close code and reason.
 - The proxy tries `GEMINI_LIVE_MODEL`, then `gemini-3.8-live`, `gemini-3.1-flash-live-preview`, `gemini-2.5-flash-native-audio-preview-12-2025`.
 - The customer is addressed in gender-neutral respectful form ("आप ... सकते हैं").
 
@@ -117,11 +117,43 @@ The voice screen asks for microphone permission, speaks the initial Hindi and En
 - The final counter instruction is spoken locally from the exact translated string rather than asking Gemini to generate it, preventing a response that says only a number.
 - OCR remains in place: the deployed host needs Tesseract/Windows OCR or a configured Gemini API key for the vision fallback. QR lookup is not enabled because existing passbooks cannot be assumed to contain a bank-supported QR code.
 
+## Voice fallback when Gemini Live cannot connect
 
-## Render native deployment: OCR and speech fallback (v25)
+Order of attempts for every customer utterance:
 
-- Add `DEEPGRAM_API_KEY` in Render → Environment to enable Deepgram transcription fallback. Keep `GEMINI_API_KEY` for Gemini Live and Gemini Vision.
-- `apt.txt` installs `tesseract-ocr` and the English language pack on Render's native Python build. This project does not require Docker for this path. Verify the deployment logs show the apt packages installed and that `/usr/bin/tesseract --version` works in the runtime.
-- The app tries local Tesseract OCR first when installed. This keeps passbook reading independent of Gemini outages. If local OCR cannot confidently read a labelled account number, it tries Gemini Vision. If Gemini Vision fails, it retains the local OCR text for manual correction.
-- Voice fallback order is Gemini Live → Deepgram transcription → browser Web Speech API. Deepgram only transcribes audio; the existing deterministic `handleVoice` workflow interprets the transcript and generates the kiosk's next prompt. Browser `speechSynthesis` speaks responses. Deepgram is a short-utterance recorder and requires microphone permission plus HTTPS.
-- Do not commit API keys. Add them only in Render environment settings.
+1. **Gemini Live** (streaming voice, as before).
+2. **Browser speech recognition**, if the browser has a working one (Chrome, Edge, Safari).
+3. **Server speech recognition**, used automatically when the browser has none (Brave, Firefox, kiosk browsers), when it never starts, or when it errors with `network` / `service-not-allowed`. The page records the microphone itself, detects end of speech, and POSTs a 16 kHz WAV to `/api/voice/transcribe`. The server tries Gemini (plain HTTPS), then Deepgram, then Groq/OpenAI Whisper, then local `faster-whisper` (reorder with `VOICE_STT_ORDER`).
+
+Understanding the request (`/api/intent`) uses Gemini, then Groq/OpenAI if a key is set, and finally the built-in keyword classifier, so a withdrawal or deposit is still recognised with no model at all. Replies are spoken with the browser's speech synthesis and always shown on screen.
+
+Setup: add any one of `GEMINI_API_KEY`, `DEEPGRAM_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY` or install `faster-whisper` (see `.env.example`). Check what is active at `/api/voice/fallback`. Tests: `python -m pytest test_voice_fallback.py`.
+
+### "I didn't catch that" re-ask
+
+If the customer says nothing for 6 seconds (on the home screen or at any question: what to do, amount, yes/no confirmation, balance), or the speech could not be understood, the kiosk says "I didn't catch that." followed by the same question again, in the customer's language. This works with Gemini Live, browser recognition and server recognition. It repeats up to 3 times in a row, then shows a hint to use the on-screen buttons and keeps listening quietly. Tune `SILENCE_REASK_MS` and `SILENCE_REASK_MAX` in `static/app.js`.
+
+
+## Passbook OCR on Render (why it was slow or flaky, and what changed)
+
+On a small hosted instance the old code could run 16+ Tesseract passes on a tiny CPU, or wait 40 s per Gemini model with no retry, and one transient Gemini 429/503 meant a failed read. Now (Linux/Render; the Windows kiosk keeps its Windows OCR):
+
+- The browser shrinks the photo to about 1800 px JPEG before upload (3-8 MB becomes a few hundred KB), with a 50 s limit and one automatic retry on a server/backend error.
+- The server has one overall time limit (`OCR_DEADLINE_SECONDS`, default 35). Engines run in order `gemini, vision-api, tesseract`; each only counts as a success if it actually returned an account number, otherwise the next one is tried.
+- Gemini calls have a 14 s timeout and a quick retry on 429/5xx, then fall to the next model. Tesseract tries the upright image first and rotations only if needed.
+- The same photo is cached for 10 minutes, so retrying it is instant.
+
+Render checklist:
+1. Set `GEMINI_API_KEY` in the service's Environment settings (the `.env` file is not deployed). Optionally add `GROQ_API_KEY` as a backup vision provider.
+2. Free instances sleep after ~15 minutes idle, so the first request after a pause is slow (30-60 s). Use a paid instance, or an uptime pinger on `/api/health`, for a kiosk that must always respond.
+3. Free instances have very little CPU: prefer Gemini first (the default). Tesseract there is only a backup. Deploy with the included Dockerfile if you want Tesseract available at all.
+4. Run `python -m unittest test_passbook_ocr` to check the OCR chain.
+
+
+## Rate limiting, project layout and tests
+
+- `/api/voice/transcribe`, `/api/intent` and `/api/ocr/passbook` call paid APIs, so each client is limited to `RATE_LIMIT_PER_MIN` requests per minute per endpoint (default 60, `0` disables). Set `TRUST_PROXY=1` behind Render or another proxy (the Dockerfile already does). Over the limit the server answers `429` with a `Retry-After` header.
+- Gemini model names live in `gemini_models.py` (override with `GEMINI_OCR_MODEL`, `GEMINI_INTENT_MODEL`, `GEMINI_STT_MODEL`).
+- The browser code is split: `static/server-stt.js` (server speech recognition), `static/reask.js` ("I didn't catch that" re-ask) and `static/app.js` (everything else). They share one global scope and load in that order from `index.html`.
+- The Docker image runs as a non-root user and has a health check on `/api/health`.
+- Run tests with `pip install -r requirements-dev.txt` then `python -m pytest`.

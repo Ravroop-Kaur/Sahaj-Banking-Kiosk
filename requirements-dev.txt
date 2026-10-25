@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest==9.2.0
+# Needed by fastapi's TestClient; without it the endpoint tests cannot run.
+httpx==0.28.1

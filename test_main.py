@@ -208,23 +208,3 @@ def test_voice_mode_checks_withdrawal_balance_after_passbook_lookup():
     assert "Your account does not have enough balance for that withdrawal." in js
     assert "flowStage='balance-check'" in js
     assert "Number(detectedAmount)>Number(passbook.profile.balance||0)" in js
-
-
-def test_speech_config_reports_only_key_presence(monkeypatch):
-    from main import speech_config
-    monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
-    assert speech_config() == {"deepgram_available": False}
-    monkeypatch.setenv("DEEPGRAM_API_KEY", "test-key-not-real")
-    assert speech_config() == {"deepgram_available": True}
-
-
-def test_deepgram_transcription_refuses_when_unconfigured(monkeypatch):
-    from fastapi import HTTPException
-    from main import deepgram_transcribe
-    monkeypatch.delenv("DEEPGRAM_API_KEY", raising=False)
-    upload = UploadFile(filename="test.webm", file=BytesIO(b"audio"))
-    try:
-        asyncio.run(deepgram_transcribe(upload))
-        assert False, "Expected missing-key error"
-    except HTTPException as exc:
-        assert exc.status_code == 503

@@ -1,11 +1,13 @@
-fastapi
-uvicorn[standard]
-python-multipart
-# Optional local OCR; install Tesseract OCR separately for a working OCR engine.
-pillow
-pytesseract
-pytest
-
-python-dotenv
-
+# Versions below are the ones the test suite was run against (Python 3.10+).
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+python-dotenv==1.2.2
 websockets==13.1
+pillow==12.1.1
+
+# Local OCR wrapper; the Tesseract program itself must be installed separately (the Dockerfile does this).
+pytesseract==0.3.13
+
+# Optional, fully offline speech-to-text fallback (large download on first use):
+# faster-whisper

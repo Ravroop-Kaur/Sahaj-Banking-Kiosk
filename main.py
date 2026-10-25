@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from io import BytesIO
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from dotenv import load_dotenv
 from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
@@ -19,6 +19,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from urllib import error as urlerror, request as urlrequest
 from demo_database import DB_PATH, find_account, initialize_database
+import voice_fallback
+import passbook_ocr
+import gemini_models
+from ratelimit import rate_limit
 
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
@@ -124,17 +128,19 @@ def _upstream_error(text) -> str:
     return str(err)[:500]
 
 
-@app.get("/api/gemini/check")
-async def gemini_check():
-    """Open http://127.0.0.1:8766/api/gemini/check to see exactly why Gemini will not connect."""
+@app.get("/api/voice/check")
+async def gemini_check(request: Request):
+    """Developer diagnostic. Open http://127.0.0.1:8766/api/voice/check on the kiosk machine itself (localhost only)."""
+    if (request.client.host if request.client else "") not in ("127.0.0.1", "::1", "localhost"):
+        raise HTTPException(status_code=404)
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         return {"ok": False, "problem": "GEMINI_API_KEY is empty. Put your key in the .env file (not .env.example) and restart the kiosk."}
 
     def probe(model: str) -> dict:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}"
         try:
-            with urlrequest.urlopen(urlrequest.Request(url), timeout=10) as resp:
+            with urlrequest.urlopen(urlrequest.Request(url, headers={"x-goog-api-key": api_key}), timeout=10) as resp:
                 return {"model": model, "available": resp.status == 200}
         except urlerror.HTTPError as exc:
             try:
@@ -157,62 +163,7 @@ async def gemini_check():
     return {"ok": any(r["available"] for r in results), "problem": problem, "models": results}
 
 
-@app.get("/api/speech/config")
-def speech_config():
-    """Expose only whether Deepgram is configured; never expose its API key."""
-    return {"deepgram_available": bool(os.getenv("DEEPGRAM_API_KEY", "").strip())}
-
-
-@app.post("/api/speech/transcribe")
-async def deepgram_transcribe(file: UploadFile = File(...)):
-    """Transcribe a short voice utterance through Deepgram without exposing the API key."""
-    api_key = os.getenv("DEEPGRAM_API_KEY", "").strip()
-    if not api_key:
-        raise HTTPException(status_code=503, detail="Alternative speech recognition is not configured.")
-    if file.content_type not in {"audio/webm", "audio/ogg", "audio/wav", "audio/mp4", "audio/mpeg", "audio/webm;codecs=opus", "application/octet-stream"}:
-        # Browsers may report audio/webm; codecs are checked separately below.
-        if not (file.content_type or "").startswith("audio/"):
-            raise HTTPException(status_code=415, detail="Unsupported audio format.")
-    raw = await file.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="No audio was received.")
-    if len(raw) > 12 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="Audio is too large.")
-    params = "model=whisper-large&smart_format=true&punctuate=true"
-    req = urlrequest.Request(
-        "https://api.deepgram.com/v1/listen?" + params,
-        data=raw,
-        headers={"Authorization": "Token " + api_key,
-                 "Content-Type": file.content_type or "audio/webm"},
-        method="POST",
-    )
-    try:
-        def call_deepgram():
-            with urlrequest.urlopen(req, timeout=25) as response:
-                return json.loads(response.read().decode("utf-8"))
-        result = await run_in_threadpool(call_deepgram)
-    except urlerror.HTTPError as exc:
-        try:
-            detail = exc.read().decode("utf-8", errors="replace")[:500]
-        except Exception:
-            detail = ""
-        print(f"[Deepgram STT] provider HTTP {exc.code}: {detail}")
-        raise HTTPException(status_code=502, detail="Alternative speech recognition is temporarily unavailable.") from exc
-    except Exception as exc:
-        print(f"[Deepgram STT] request failed: {type(exc).__name__}: {exc}")
-        raise HTTPException(status_code=502, detail="Alternative speech recognition is temporarily unavailable.") from exc
-    try:
-        channel = result["results"]["channels"][0]["alternatives"][0]
-        transcript = (channel.get("transcript") or "").strip()
-        detected_language = result.get("results", {}).get("channels", [{}])[0].get("detected_language", "")
-    except (KeyError, IndexError, TypeError):
-        transcript, detected_language = "", ""
-    if not transcript:
-        raise HTTPException(status_code=422, detail="No clear speech was recognized.")
-    return {"transcript": transcript, "language": detected_language, "provider": "Deepgram"}
-
-
-@app.websocket("/api/gemini/live")
+@app.websocket("/api/voice/live")
 async def gemini_live_proxy(client: WebSocket):
     """Proxy Gemini Live traffic so the Google API key is never sent to the browser."""
     await client.accept()
@@ -268,7 +219,7 @@ async def gemini_live_proxy(client: WebSocket):
                     except Exception:
                         pass
         if upstream is None:
-            await client.send_json({"proxyError": "Gemini Live could not start. " + " | ".join(failures[:3]) + " — open /api/gemini/check for a diagnosis."})
+            await client.send_json({"proxyError": "Gemini Live could not start. " + " | ".join(failures[:3]) + " — open /api/voice/check for a diagnosis."})
             await client.close(code=1011)
             return
         if isinstance(first_reply, (bytes, bytearray)):
@@ -326,7 +277,7 @@ async def gemini_live_proxy(client: WebSocket):
         try:
             detail = str(exc).replace("\n", " ").replace(api_key, "***").strip()[:240]
             suffix = f": {detail}" if detail else ""
-            await client.send_json({"proxyError": f"Gemini Live connection failed ({type(exc).__name__}){suffix}. Open /api/gemini/check or look at the kiosk terminal."})
+            await client.send_json({"proxyError": f"Gemini Live connection failed ({type(exc).__name__}){suffix}. Open /api/voice/check or look at the kiosk terminal."})
             await client.close(code=1011)
         except Exception:
             pass
@@ -336,6 +287,11 @@ async def gemini_live_proxy(client: WebSocket):
                 await upstream.close()
             except Exception:
                 pass
+
+
+def _use_portable_ocr() -> bool:
+    """True everywhere except a Windows kiosk, which keeps its local Windows OCR path."""
+    return not (sys.platform == "win32" and shutil.which("powershell.exe"))
 
 
 def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -> list[Path]:
@@ -405,11 +361,7 @@ def _gemini_read_passbook(folder: Path) -> str:
         if not paths:
             raise RuntimeError("No image was available to read.")
         image_bytes, mime = paths[0].read_bytes(), "image/png"
-    models = []
-    # Prefer current multimodal models and keep the fallback chain short.
-    for name in [os.getenv("GEMINI_OCR_MODEL", "").strip(), "gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"]:
-        if name and name not in models:
-            models.append(name)
+    models = gemini_models.ocr_models()
     payload = {
         "contents": [{"role": "user", "parts": [
             {"text": "Read this synthetic demo bank passbook image. It may be rotated or upside down. Extract ONLY the printed account number (usually 8–18 digits) explicitly labelled Account Number, Account No, or A/C No. Ignore CIF numbers, phone numbers, balances, dates, and transaction numbers. Output exactly one line: Account Number: <digits>. If the labelled account number cannot be read confidently, output exactly: Account Number: UNCERTAIN. Do not guess digits."},
@@ -453,18 +405,12 @@ def _recognize_local_variants(folder: Path) -> tuple[str, str]:
         candidates = []
         paths = sorted(folder.glob("*.png"))
         preferred = [p for p in paths if p.name in {"gray_0.png", "threshold_0.png", "gray_180.png", "threshold_180.png"}]
-        ordered = (preferred + [p for p in paths if p not in preferred])[:8]
-        for path_index, path in enumerate(ordered):
-            # Keep native Render response times bounded: try all four orientations
-            # with PSM 6 and use PSM 11 only on the first four likely candidates.
-            modes = ("6", "11") if path_index < 4 else ("6",)
-            for psm in modes:
-                try:
-                    result = subprocess.run([tesseract, str(path), "stdout", "-l", "eng", "--oem", "3", "--psm", psm],
-                                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8)
-                except subprocess.TimeoutExpired:
-                    print(f"[Local OCR] Tesseract timed out for {path.name} (PSM {psm}); continuing with remaining variants.")
-                    continue
+        ordered = preferred + [p for p in paths if p not in preferred]
+        seen = set()
+        for path in ordered:
+            for psm in ("6", "11"):
+                result = subprocess.run([tesseract, str(path), "stdout", "-l", "eng", "--oem", "3", "--psm", psm],
+                                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
                 candidate = result.stdout
                 candidates.append(candidate)
                 normalized = re.sub(r"\s+", " ", candidate).lower()
@@ -484,9 +430,8 @@ def _recognize_local_variants(folder: Path) -> tuple[str, str]:
         candidates = [item.get("text", "") for item in variants]
         engine = "Windows OCR (local)"
     else:
-        # Render native Python deployments can install Tesseract through apt.txt.
-        # If the binary is absent, the caller will attempt Gemini Vision.
-        return "", "No local OCR engine"
+        # No Tesseract/Windows OCR on this server (e.g. Render's Python runtime): read the photo with Gemini instead.
+        return _gemini_read_passbook(folder), "Gemini vision"
 
     def score(text: str) -> tuple[int, int, int, int]:
         normalized = re.sub(r"\s+", " ", text).lower()
@@ -497,7 +442,7 @@ def _recognize_local_variants(folder: Path) -> tuple[str, str]:
         return labelled, twelve_digit, len(account_like), len(tokens) + len(text.strip())
     return max(candidates, key=score, default=""), engine
 
-@app.post("/api/ocr/passbook")
+@app.post("/api/ocr/passbook", dependencies=[Depends(rate_limit)])
 async def ocr_passbook(file: UploadFile = File(...)):
     allowed = {"image/jpeg", "image/png", "image/webp"}
     if file.content_type not in allowed:
@@ -512,36 +457,19 @@ async def ocr_passbook(file: UploadFile = File(...)):
         # are blocking. Run them off the asyncio event loop so active Gemini Live
         # WebSockets can continue servicing ping/pong traffic while OCR is running.
         def run_passbook_ocr() -> tuple[str, str, int]:
+            if _use_portable_ocr():
+                # Hosted Linux (e.g. Render): deadline-bound Gemini -> backup vision API -> Tesseract chain with caching.
+                try:
+                    image = passbook_ocr.prepare_image(raw)
+                except ValueError as exc:
+                    raise HTTPException(413, str(exc))
+                text, engine = passbook_ocr.recognize(image)
+                return text, engine, 1
             with tempfile.TemporaryDirectory(prefix="kiosk-ocr-") as work:
                 folder = Path(work)
                 variants = _prepare_ocr_variants(raw, folder, file.filename or ".jpg")
-                # Prefer local OCR when it is installed: this keeps passbook reading
-                # independent of Gemini outages and avoids sending images externally.
-                try:
-                    local_text, local_engine = _recognize_local_variants(folder)
-                except Exception as local_error:
-                    print(f"[Local OCR] failed; attempting Gemini Vision: {type(local_error).__name__}: {local_error}")
-                    local_text, local_engine = "", "Local OCR unavailable"
-
-                def has_labelled_account(candidate: str) -> bool:
-                    normalized = re.sub(r"\s+", " ", candidate).lower()
-                    labelled = re.search(r"(?:account|a\s*/\s*c)\s*(?:number|no\.?|#|id)", normalized)
-                    return bool(labelled and re.search(r"(?<!\d)\d{8,18}(?!\d)", candidate))
-
-                if has_labelled_account(local_text):
-                    return local_text, local_engine, len(variants)
-
-                try:
-                    vision_text = _gemini_read_passbook(folder)
-                    if has_labelled_account(vision_text):
-                        return vision_text, "Gemini vision", len(variants)
-                    # Keep the best available OCR output for the parser/manual correction UI.
-                    return (vision_text or local_text), ("Gemini vision" if vision_text else local_engine), len(variants)
-                except Exception as vision_error:
-                    print(f"[Passbook OCR] Gemini Vision failed; using local OCR result: {type(vision_error).__name__}: {vision_error}")
-                    if local_text.strip():
-                        return local_text, local_engine, len(variants)
-                    raise RuntimeError("Gemini Vision failed and local OCR could not read the image.") from vision_error
+                text, engine = _recognize_local_variants(folder)
+                return text, engine, len(variants)
 
         text, engine, variant_count = await run_in_threadpool(run_passbook_ocr)
         flat_text = re.sub(r"\s+", " ", text).strip()
@@ -575,7 +503,7 @@ async def ocr_passbook(file: UploadFile = File(...)):
             notice = "No account number could be read confidently. Try a clearer photo or type the number manually. No other details were extracted for lookup."
         return {"engine": engine, "fields": {
             "account_id": {"value": account_id, "confidence": "review" if account_id else "uncertain"}},
-            "quality": {"attempts": variant_count, "orientations": ([0] if engine == "Gemini vision" else [0, 90, 180, 270]), "local_only": engine != "Gemini vision"}, "notice": notice}
+            "quality": {"attempts": variant_count, "orientations": ([0] if not engine.startswith(("Local", "Windows")) else [0, 90, 180, 270]), "local_only": engine.startswith(("Local", "Windows"))}, "notice": notice}
     except HTTPException:
         raise
     except Exception as exc:
@@ -585,80 +513,65 @@ async def ocr_passbook(file: UploadFile = File(...)):
             "quality": {"attempts": 0, "local_only": False},
             "notice": f"Could not read the passbook: {exc}" if isinstance(exc, RuntimeError) else f"Could not process this image ({type(exc).__name__}). Type the account number manually."}
 
+_INTENT_SYSTEM_PROMPT = (
+    "You classify a customer's spoken banking request for a demo form-preparation kiosk. "
+    "Understand ordinary everyday language, Hindi in Devanagari or Romanized Hindi, English, "
+    "and mixed Hindi-English. Classify only into withdrawal, deposit, greeting, unsupported, "
+    "or unclear. Withdrawal includes taking out cash, receiving pension, or asking for money "
+    "from one's account. Deposit means putting cash/money into an account. Do not infer a "
+    "transaction from unrelated small talk. If two intents conflict or the request is not clear, "
+    "choose unclear. Never guess an amount: return amount only when the user explicitly states "
+    "a numeric amount or an unambiguous amount in words; otherwise use empty string. Do not "
+    "interpret account numbers, dates, ages, phone numbers, or unrelated numbers as amounts. "
+    "This is only for preparing a paper draft; no money is moved. Return ONLY valid JSON with "
+    "keys intent, transaction, confidence, amount, message. intent must be one of the allowed "
+    "labels. confidence must be high, medium, or low. transaction is cash withdrawal, pension "
+    "withdrawal, deposit, or empty. amount is a plain numeric string or empty. message is short."
+    )
+
+
+def _normalize_intent(parsed: dict) -> dict | None:
+    """Validate/clean a model's JSON so no engine can invent a form, amount or transaction."""
+    allowed = {"withdrawal", "deposit", "greeting", "unsupported", "unclear"}
+    label = parsed.get("intent")
+    if label not in allowed:
+        return None
+    confidence = parsed.get("confidence", "low")
+    if confidence not in {"high", "medium", "low"}:
+        confidence = "low"
+    amount = str(parsed.get("amount") or "").strip().replace(",", "")
+    if amount and not re.fullmatch(r"\d{1,7}(?:\.\d{1,2})?", amount):
+        amount = ""
+    # A low-confidence financial classification must not auto-select a form.
+    if label in {"withdrawal", "deposit"} and confidence == "low":
+        label = "unclear"
+        amount = ""
+    transaction = parsed.get("transaction", "")
+    if label == "withdrawal":
+        transaction = "pension withdrawal" if transaction == "pension withdrawal" else "cash withdrawal"
+    elif label == "deposit":
+        transaction = "deposit"
+    else:
+        transaction = ""
+    return {
+        "intent": label,
+        "transaction": transaction,
+        "confidence": confidence,
+        "amount": amount if label in {"withdrawal", "deposit"} else "",
+        "message": str(parsed.get("message") or "")[:240],
+        "engine": "llm",
+    }
+
+
 def _intent_from_model(text: str, language: str) -> dict | None:
-    """Use Gemini for flexible Hindi/English intent parsing.
+    """Classify with the first working model (Gemini, then Groq/OpenAI if configured).
 
     The model classifies only the requested form. It cannot trigger a real transaction,
-    look up accounts, or invent an amount. Missing/invalid model output falls back safely.
+    look up accounts, or invent an amount. If every model is unreachable this returns
+    None and the deterministic keyword classifier takes over.
     """
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key:
-        return None
-    model = os.getenv("GEMINI_INTENT_MODEL", "gemini-3.6-flash").strip() or "gemini-3.6-flash"
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-    system_prompt = (
-        "You classify a customer's spoken banking request for a demo form-preparation kiosk. "
-        "Understand ordinary everyday language, Hindi in Devanagari or Romanized Hindi, English, "
-        "and mixed Hindi-English. Classify only into withdrawal, deposit, greeting, unsupported, "
-        "or unclear. Withdrawal includes taking out cash, receiving pension, or asking for money "
-        "from one's account. Deposit means putting cash/money into an account. Do not infer a "
-        "transaction from unrelated small talk. If two intents conflict or the request is not clear, "
-        "choose unclear. Never guess an amount: return amount only when the user explicitly states "
-        "a numeric amount or an unambiguous amount in words; otherwise use empty string. Do not "
-        "interpret account numbers, dates, ages, phone numbers, or unrelated numbers as amounts. "
-        "This is only for preparing a paper draft; no money is moved. Return ONLY valid JSON with "
-        "keys intent, transaction, confidence, amount, message. intent must be one of the allowed "
-        "labels. confidence must be high, medium, or low. transaction is cash withdrawal, pension "
-        "withdrawal, deposit, or empty. amount is a plain numeric string or empty. message is short."
-    )
-    payload = {
-        "systemInstruction": {"parts": [{"text": system_prompt}]},
-        "contents": [{"role": "user", "parts": [{"text": json.dumps({"text": text, "language_hint": language}, ensure_ascii=False)}]}],
-        "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
-    }
-    request = urlrequest.Request(
-        endpoint,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urlrequest.urlopen(request, timeout=12) as response:
-            body = json.loads(response.read(1024 * 1024).decode("utf-8"))
-        content = "".join(part.get("text", "") for part in body["candidates"][0]["content"]["parts"])
-        parsed = json.loads(content)
-        allowed = {"withdrawal", "deposit", "greeting", "unsupported", "unclear"}
-        label = parsed.get("intent")
-        if label not in allowed:
-            return None
-        confidence = parsed.get("confidence", "low")
-        if confidence not in {"high", "medium", "low"}:
-            confidence = "low"
-        amount = str(parsed.get("amount") or "").strip().replace(",", "")
-        if amount and not re.fullmatch(r"\d{1,7}(?:\.\d{1,2})?", amount):
-            amount = ""
-        # A low-confidence financial classification must not auto-select a form.
-        if label in {"withdrawal", "deposit"} and confidence == "low":
-            label = "unclear"
-            amount = ""
-        transaction = parsed.get("transaction", "")
-        if label == "withdrawal":
-            transaction = "pension withdrawal" if transaction == "pension withdrawal" else "cash withdrawal"
-        elif label == "deposit":
-            transaction = "deposit"
-        else:
-            transaction = ""
-        return {
-            "intent": label,
-            "transaction": transaction,
-            "confidence": confidence,
-            "amount": amount if label in {"withdrawal", "deposit"} else "",
-            "message": str(parsed.get("message") or "")[:240],
-            "engine": "llm",
-        }
-    except (urlerror.URLError, TimeoutError, OSError, ValueError, KeyError, TypeError, IndexError):
-        # The deterministic classifier below remains available if the model is offline.
-        return None
+    parsed = voice_fallback.chat_json(_INTENT_SYSTEM_PROMPT, json.dumps({"text": text, "language_hint": language}, ensure_ascii=False))
+    return _normalize_intent(parsed) if parsed else None
 
 
 def _extract_explicit_amount(text: str) -> str:
@@ -725,7 +638,27 @@ def _fallback_intent(text: str) -> dict:
     return {"intent": "unclear", "confidence": "low", "amount": "", "message": "Please tell me whether you want to withdraw money or deposit money. You can speak naturally in Hindi or English.", "engine": "fallback"}
 
 
-@app.post("/api/intent")
+@app.get("/api/voice/fallback")
+def voice_fallback_status():
+    """Tells the page whether server-side speech-to-text can be used."""
+    return voice_fallback.status()
+
+
+@app.post("/api/voice/transcribe", dependencies=[Depends(rate_limit)])
+async def voice_transcribe(request: Request):
+    """Browser-independent speech-to-text. Body: a 16 kHz mono WAV clip (audio/wav)."""
+    audio = await request.body()
+    if not audio:
+        raise HTTPException(status_code=400, detail="No audio received.")
+    if len(audio) > voice_fallback.MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Audio clip is too long.")
+    if not voice_fallback.looks_like_wav(audio):
+        raise HTTPException(status_code=415, detail="Send a WAV (audio/wav) clip.")
+    language = request.query_params.get("language", "")[:5]
+    return await run_in_threadpool(voice_fallback.transcribe, audio, language)
+
+
+@app.post("/api/intent", dependencies=[Depends(rate_limit)])
 def intent(req: IntentRequest):
     text = re.sub(r"\s+", " ", req.text).strip()
     if not text:
