@@ -71,10 +71,11 @@ async function finishServerClip(rec,hadSpeech){
   const blob=encodeWav16k(chunks,rate);
   if(blob.size<16000*2*SERVER_STT.minMs/1000){again();return}
   showVoiceStatus(speakingLanguage==='hi'?'समझ रही हूँ…':speakingLanguage==='pa'?'ਸਮਝ ਰਹੀ ਹਾਂ…':speakingLanguage==='ur'?'سمجھ رہی ہوں…':'Understanding…');
+  clearSilenceReask();transcribingNow=true;
   try{
     const r=await fetch('/api/voice/transcribe?language='+encodeURIComponent(speakingLanguage||''),{method:'POST',headers:{'Content-Type':'audio/wav'},body:blob});
     if(!r.ok)throw new Error('HTTP '+r.status);
-    const d=await r.json();
+    const d=await r.json();transcribingNow=false;
     const text=(d.text||'').trim();
     if(d.engine)setDevBadge('server-stt',d.engine);
     if(!text){
@@ -85,7 +86,7 @@ async function finishServerClip(rec,hadSpeech){
     speechRestartAllowed=false;
     handleVoice(text,detectLanguage(text));
   }catch(error){
-    console.warn('[server stt] transcription failed',error);
+    transcribingNow=false;console.warn('[server stt] transcription failed',error);
     showVoiceStatus(errCopy('generic'));
     setTimeout(again,1500);
   }
