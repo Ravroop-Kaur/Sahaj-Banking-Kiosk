@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 import re
 import tempfile
+import time
 import sys
 import json
 import shutil
@@ -319,34 +320,53 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
 
 _GEMINI_VISION_MODEL = {"name": ""}
 
+# Named models are tried first, in this order. "-latest" aliases are the last resort.
+# Override with GEMINI_OCR_MODELS="model-a,model-b" (comma separated) in the Render environment.
+GEMINI_OCR_DEFAULT_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-3.1-flash",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+]
+# Retired models (Google returns 404 "no longer available to new users"). Never tried, and any model
+# that returns 404 at runtime is added here until the server restarts.
+GEMINI_OCR_RETIRED = {"gemini-2.0-flash", "gemini-2.0-flash-001", "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-1.5-flash-8b"}
+GEMINI_OCR_LAST_RESORT = ["gemini-flash-latest"]
+
 def _gemini_vision_candidates(api_key: str) -> list[str]:
-    """Ask Google which models this key can call, and return the plausible vision-capable 'flash' ones, newest first."""
+    """Order: GEMINI_OCR_MODEL, last model that worked, named models, any other flash model this key can use, then flash-latest."""
     names = []
     configured = os.getenv("GEMINI_OCR_MODEL", "").strip()
     if configured:
         names.append(configured)
     if _GEMINI_VISION_MODEL["name"]:
         names.append(_GEMINI_VISION_MODEL["name"])
+    env_list = [m.strip() for m in os.getenv("GEMINI_OCR_MODELS", "").split(",") if m.strip()]
+    names.extend(env_list or GEMINI_OCR_DEFAULT_MODELS)
     try:
         req = urlrequest.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": api_key})
         with urlrequest.urlopen(req, timeout=20) as resp:
             listing = json.loads(resp.read().decode("utf-8"))
+        available = set()
         found = []
         for item in listing.get("models", []):
             name = str(item.get("name", "")).replace("models/", "")
             if "generateContent" not in (item.get("supportedGenerationMethods") or []):
                 continue
-            if any(bad in name for bad in ("live", "tts", "image", "embed", "audio", "native", "robotics", "computer", "thinking", "lite", "gemma", "learnlm", "aqa", "veo", "imagen")):
+            available.add(name)
+            if any(bad in name for bad in ("live", "tts", "image", "embed", "audio", "native", "robotics", "computer", "thinking", "lite", "gemma", "learnlm", "aqa", "veo", "imagen", "latest")):
                 continue
             if "flash" in name:
                 found.append(name)
-        # Prefer stable names over previews/experiments, then newer versions.
         found.sort(key=lambda n: (("preview" in n or "exp" in n), [-int(x) if x.isdigit() else 0 for x in re.findall(r"\d+", n)]))
+        # Skip named models this key cannot call (saves a wasted request each), then add other flash models.
+        if available:
+            names = [n for n in names if n in available or n == configured]
         names.extend(found)
     except Exception as exc:
         print("GEMINI MODEL LIST ERROR:", repr(exc), flush=True)
-    names.extend(["gemini-2.5-flash", "gemini-2.0-flash"])
-    return list(dict.fromkeys(names))
+    names.extend(GEMINI_OCR_LAST_RESORT)
+    return [n for n in dict.fromkeys(names) if n not in GEMINI_OCR_RETIRED]
 
 
 def _gemini_read_passbook(folder: Path) -> str:
@@ -373,26 +393,37 @@ def _gemini_read_passbook(folder: Path) -> str:
     last_error = "no model tried"
     tried = 0
     for model in _gemini_vision_candidates(api_key):
-        if tried >= 6:
+        if tried >= 8:
             break
         tried += 1
         endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
         req = urlrequest.Request(endpoint, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": api_key}, method="POST")
-        try:
-            with urlrequest.urlopen(req, timeout=40) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except urlerror.HTTPError as exc:
-            detail = ""
+        data = None
+        for attempt in range(3):
             try:
-                detail = exc.read().decode("utf-8", "replace")[:200]
-            except Exception:
-                pass
-            last_error = f"{model}: HTTP {exc.code} {detail}"
-            print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
-            continue
-        except (urlerror.URLError, TimeoutError, ValueError) as exc:
-            last_error = f"{model}: {exc}"
-            print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
+                with urlrequest.urlopen(req, timeout=40) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                break
+            except urlerror.HTTPError as exc:
+                detail = ""
+                try:
+                    detail = exc.read().decode("utf-8", "replace")[:200]
+                except Exception:
+                    pass
+                last_error = f"{model}: HTTP {exc.code} {detail}"
+                print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
+                if exc.code == 404:
+                    GEMINI_OCR_RETIRED.add(model)  # model gone for this key: do not try it again
+                    break
+                if exc.code in (429, 500, 502, 503, 504) and attempt < 2:
+                    time.sleep(1.5 * (attempt + 1))  # transient overload: retry same model
+                    continue
+                break
+            except (urlerror.URLError, TimeoutError, ValueError) as exc:
+                last_error = f"{model}: {exc}"
+                print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
+                break
+        if data is None:
             continue
         parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
         text = "\n".join(part.get("text", "") for part in parts)
