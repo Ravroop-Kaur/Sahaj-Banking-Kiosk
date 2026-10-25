@@ -5,6 +5,7 @@ python-multipart
 pillow
 pytesseract
 pytest
-sarvamai
 
 python-dotenv
+
+websockets==13.1

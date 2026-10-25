@@ -1,5 +1,4 @@
-"""Local synthetic banking kiosk MVP with an optional Sarvam speech proxy."""
-import base64
+"""Local synthetic banking kiosk MVP with Gemini Live voice support."""
 import asyncio
 from datetime import date
 from pathlib import Path
@@ -12,7 +11,7 @@ import shutil
 import subprocess
 from io import BytesIO
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from dotenv import load_dotenv
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -55,9 +54,6 @@ class SampleFormRequest(BaseModel):
     fields: dict[str, str] = Field(default_factory=dict)
     confirmed: bool = False
 
-class SpeechRequest(BaseModel):
-    text: str = Field(min_length=1, max_length=2500)
-    language: str = "en"
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -66,69 +62,59 @@ def home():
 @app.get("/api/health")
 def health():
     initialize_database()
-    return {"status": "ok", "ocr": "local-windows-ocr-or-tesseract", "speech": "sarvam-configured" if os.getenv("SARVAM_API_KEY") else "sarvam-key-required", "pdf_template": "synthetic-clean-forms", "bank_integration": False, "database": str(DB_PATH), "synthetic_database": True}
+    return {"status": "ok", "ocr": "local-windows-ocr-or-tesseract", "speech": "gemini-configured" if os.getenv("GEMINI_API_KEY") else "gemini-key-required", "pdf_template": "synthetic-clean-forms", "bank_integration": False, "database": str(DB_PATH), "synthetic_database": True}
 
-SARVAM_BASE_URL = "https://api.sarvam.ai"
-
-def _sarvam_headers() -> dict[str, str]:
-    key = os.getenv("SARVAM_API_KEY", "").strip()
-    if not key:
-        raise HTTPException(503, "Sarvam speech is not configured. Set SARVAM_API_KEY on the kiosk server.")
-    return {"api-subscription-key": key}
-
-def _sarvam_post(url: str, headers: dict[str, str], payload: bytes) -> tuple[int, bytes]:
-    request = urlrequest.Request(url, data=payload, headers=headers, method="POST")
+@app.websocket("/api/gemini/live")
+async def gemini_live_proxy(client: WebSocket):
+    """Proxy Gemini Live traffic so the Google API key is never sent to the browser."""
+    await client.accept()
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        await client.send_json({"proxyError": "Gemini voice is not configured. Add GEMINI_API_KEY to the server .env file."})
+        await client.close(code=1011)
+        return
     try:
-        with urlrequest.urlopen(request, timeout=35) as response:
-            return response.status, response.read(12 * 1024 * 1024)
-    except urlerror.HTTPError as exc:
-        return exc.code, exc.read(4096)
-    except (urlerror.URLError, TimeoutError, OSError) as exc:
-        raise HTTPException(502, f"Could not connect to Sarvam ({type(exc).__name__}).") from exc
+        from websockets.legacy.client import connect as websocket_connect
+        from urllib.parse import quote
+        url = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=" + quote(api_key)
+        async with websocket_connect(url, max_size=12 * 1024 * 1024, open_timeout=15) as upstream:
+            async def browser_to_gemini():
+                while True:
+                    message = await client.receive_text()
+                    await upstream.send(message)
+            async def gemini_to_browser():
+                async for message in upstream:
+                    # Gemini may send either text JSON frames or binary frames.
+                    # Starlette's send_text expects str; calling it with bytes raises
+                    # the exact "'bytes' object has no attribute 'encode'" error.
+                    if isinstance(message, bytes):
+                        await client.send_bytes(message)
+                    else:
+                        await client.send_text(message)
+            tasks = [asyncio.create_task(browser_to_gemini()), asyncio.create_task(gemini_to_browser())]
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in pending:
+                task.cancel()
+            for task in done:
+                exc = task.exception()
+                if exc and not isinstance(exc, WebSocketDisconnect):
+                    raise exc
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        # Log the underlying error to the launcher terminal so connection failures can be diagnosed.
+        import traceback
+        print(f"[Gemini Live proxy] {type(exc).__name__}: {exc}", flush=True)
+        traceback.print_exc()
+        try:
+            # Include a short diagnostic detail in the UI; never include the API key or request URL.
+            detail = str(exc).replace("\n", " ").strip()[:240]
+            suffix = f": {detail}" if detail else ""
+            await client.send_json({"proxyError": f"Gemini Live connection failed ({type(exc).__name__}){suffix}. Check the kiosk terminal for details."})
+            await client.close(code=1011)
+        except Exception:
+            pass
 
-@app.post("/api/speech/transcribe")
-async def sarvam_transcribe(file: UploadFile = File(...)):
-    """Proxy a short browser-recorded audio clip to Sarvam Saaras; keep API key server-side."""
-    mime_type = (file.content_type or "application/octet-stream").split(";", 1)[0].strip().lower()
-    if mime_type not in {"audio/webm", "audio/ogg", "audio/mp4", "audio/wav", "audio/mpeg", "audio/aac", "application/octet-stream"}:
-        raise HTTPException(415, "Record speech as WebM, OGG, MP4, WAV, MP3, or AAC audio.")
-    audio = await file.read(8 * 1024 * 1024 + 1)
-    if not audio or len(audio) > 8 * 1024 * 1024:
-        raise HTTPException(413, "Speech recording must be between 1 byte and 8 MB.")
-    boundary = "----kiosk-sarvam-audio-boundary"
-    filename = Path(file.filename or "speech.webm").name.replace('"', "")
-    mime = mime_type
-    parts = []
-    for key, value in (("model", "saaras:v4"), ("mode", "transcribe")):
-        parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{key}\"\r\n\r\n{value}\r\n".encode())
-    parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\nContent-Type: {mime}\r\n\r\n".encode() + audio + b"\r\n")
-    parts.append(f"--{boundary}--\r\n".encode())
-    status, body = await asyncio.to_thread(_sarvam_post, f"{SARVAM_BASE_URL}/speech-to-text",
-        {**_sarvam_headers(), "Content-Type": f"multipart/form-data; boundary={boundary}"}, b"".join(parts))
-    if not 200 <= status < 300:
-        raise HTTPException(502, f"Sarvam speech recognition returned HTTP {status}: {body.decode('utf-8', errors='replace')[:700]}")
-    data = json.loads(body)
-    return {"transcript": data.get("transcript", ""), "language_code": data.get("language_code", ""), "engine": "Sarvam Saaras v4"}
-
-@app.post("/api/speech/speak")
-async def sarvam_speak(req: SpeechRequest):
-    """Return Sarvam Bulbul WAV audio for languages supported by its TTS model."""
-    language_codes = {"en": "en-IN", "hi": "hi-IN", "pa": "pa-IN"}
-    if req.language not in language_codes:
-        raise HTTPException(422, "Sarvam Bulbul TTS is not available for this selected language; use the on-screen text.")
-    status, body = await asyncio.to_thread(_sarvam_post, f"{SARVAM_BASE_URL}/text-to-speech",
-        {**_sarvam_headers(), "Content-Type": "application/json"}, json.dumps(
-            {"text": req.text, "language_code": language_codes[req.language], "model": "bulbul:v3", "speaker": "ritu", "output_audio_codec": "wav"}).encode())
-    if not 200 <= status < 300:
-        raise HTTPException(502, f"Sarvam speech synthesis returned HTTP {status}: {body.decode('utf-8', errors='replace')[:700]}")
-    audios = json.loads(body).get("audios", [])
-    if not audios:
-        raise HTTPException(502, "Sarvam did not return audio for this response.")
-    try:
-        wav = base64.b64decode(audios[0], validate=True)
-    except (ValueError, TypeError) as exc:
-        raise HTTPException(502, "Sarvam returned invalid audio data.") from exc
-    return Response(content=wav, media_type="audio/wav")
 
 def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -> list[Path]:
     """Create local OCR attempts tolerant of camera rotation, blur, and low contrast."""
@@ -272,24 +258,157 @@ async def ocr_passbook(file: UploadFile = File(...)):
             "quality": {"attempts": 0, "local_only": True},
             "notice": f"Local OCR could not process this image ({type(exc).__name__}). Confirm details manually; no image was sent externally."}
 
+def _intent_from_model(text: str, language: str) -> dict | None:
+    """Use Gemini for flexible Hindi/English intent parsing.
+
+    The model classifies only the requested form. It cannot trigger a real transaction,
+    look up accounts, or invent an amount. Missing/invalid model output falls back safely.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return None
+    model = os.getenv("GEMINI_INTENT_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    system_prompt = (
+        "You classify a customer's spoken banking request for a demo form-preparation kiosk. "
+        "Understand ordinary everyday language, Hindi in Devanagari or Romanized Hindi, English, "
+        "and mixed Hindi-English. Classify only into withdrawal, deposit, greeting, unsupported, "
+        "or unclear. Withdrawal includes taking out cash, receiving pension, or asking for money "
+        "from one's account. Deposit means putting cash/money into an account. Do not infer a "
+        "transaction from unrelated small talk. If two intents conflict or the request is not clear, "
+        "choose unclear. Never guess an amount: return amount only when the user explicitly states "
+        "a numeric amount or an unambiguous amount in words; otherwise use empty string. Do not "
+        "interpret account numbers, dates, ages, phone numbers, or unrelated numbers as amounts. "
+        "This is only for preparing a paper draft; no money is moved. Return ONLY valid JSON with "
+        "keys intent, transaction, confidence, amount, message. intent must be one of the allowed "
+        "labels. confidence must be high, medium, or low. transaction is cash withdrawal, pension "
+        "withdrawal, deposit, or empty. amount is a plain numeric string or empty. message is short."
+    )
+    payload = {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": [{"text": json.dumps({"text": text, "language_hint": language}, ensure_ascii=False)}]}],
+        "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
+    }
+    request = urlrequest.Request(
+        endpoint,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlrequest.urlopen(request, timeout=12) as response:
+            body = json.loads(response.read(1024 * 1024).decode("utf-8"))
+        content = "".join(part.get("text", "") for part in body["candidates"][0]["content"]["parts"])
+        parsed = json.loads(content)
+        allowed = {"withdrawal", "deposit", "greeting", "unsupported", "unclear"}
+        label = parsed.get("intent")
+        if label not in allowed:
+            return None
+        confidence = parsed.get("confidence", "low")
+        if confidence not in {"high", "medium", "low"}:
+            confidence = "low"
+        amount = str(parsed.get("amount") or "").strip().replace(",", "")
+        if amount and not re.fullmatch(r"\d{1,7}(?:\.\d{1,2})?", amount):
+            amount = ""
+        # A low-confidence financial classification must not auto-select a form.
+        if label in {"withdrawal", "deposit"} and confidence == "low":
+            label = "unclear"
+            amount = ""
+        transaction = parsed.get("transaction", "")
+        if label == "withdrawal":
+            transaction = "pension withdrawal" if transaction == "pension withdrawal" else "cash withdrawal"
+        elif label == "deposit":
+            transaction = "deposit"
+        else:
+            transaction = ""
+        return {
+            "intent": label,
+            "transaction": transaction,
+            "confidence": confidence,
+            "amount": amount if label in {"withdrawal", "deposit"} else "",
+            "message": str(parsed.get("message") or "")[:240],
+            "engine": "llm",
+        }
+    except (urlerror.URLError, TimeoutError, OSError, ValueError, KeyError, TypeError, IndexError):
+        # The deterministic classifier below remains available if the model is offline.
+        return None
+
+
+def _extract_explicit_amount(text: str) -> str:
+    """Extract only amounts with a currency marker or an action/amount cue nearby."""
+    s = re.sub(r"\s+", " ", text.lower()).strip()
+    number = r"([0-9]{1,7}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)"
+    patterns = [
+        rf"(?:₹|rs\.?\s*|rupees?\s*|inr\s*){number}",
+        rf"{number}\s*(?:rupees?|rs\.?|inr|रुपये|रुपए|रुपया|रुपयों)",
+        rf"(?:withdraw|withdrawal|deposit|take out|put in|निकाल|जमा|कढ|ਕਢ|جمع|نکال)[^0-9]{{0,24}}{number}",
+        rf"{number}[^0-9]{{0,16}}(?:withdraw|withdrawal|deposit|निकाल|जमा|कढ|ਕਢ|جمع|نکال)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, s, flags=re.IGNORECASE)
+        if match:
+            return match.group(1).replace(",", "")
+    return ""
+
+
+def _fallback_intent(text: str) -> dict:
+    """Deterministic multilingual fallback; ambiguous requests never select a form."""
+    s = re.sub(r"\s+", " ", text.lower()).strip()
+    amount = _extract_explicit_amount(s)
+    withdrawal_terms = [
+        "withdraw", "withdrawal", "take out", "take some money", "get cash", "get some cash", "need cash", "cash out", "take a little money",
+        "money out", "cash from my account", "give me cash", "get my pension", "receive my pension",
+        "pension", "take my money", "cash please", "निकाल", "निकासी", "काढ", "पैसे काढ", "पैसे निकाल",
+        "पैसा निकाल", "पैसे चाहिए", "पैसे चाहिये", "रुपये चाहिए", "रुपए चाहिए", "पेंशन", "कढ",
+        "ਕਢ", "ਕਢਵ", "ਪੈਸੇ ਕਢ", "پیسے نکال", "رقم نکال", "واپسی", "paise nikal", "paisa nikal",
+        "paise nikalne", "pension nikal", "pension leni", "paisa chahiye", "paise chahiye",
+        "paise kadh", "cash kadh", "paisa kadhwana", "nikalna hai", "nikalwane hain",
+    ]
+    deposit_terms = [
+        "deposit", "put money in", "add money", "pay into", "put cash", "cash in", "credit my account",
+        "money into my account", "put it in my account", "save money in my account", "जमा", "डालना",
+        "खाते में पैसे", "खाते में जमा", "पैसे जमा", "रुपये जमा", "जमा करव", "ਜਮ੍ਹਾ", "ਖਾਤੇ ਵਿੱਚ ਪੈਸੇ",
+        "جمع", "پیسے جمع", "رقم جمع", "paise jama", "paisa jama", "jama karna", "jama karwane",
+        "account mein paise dal", "khate mein paise dal", "paise bharne", "cash jama",
+    ]
+    greetings = ["hello", "hi", "hey", "namaste", "namaskar", "adaab", "sat sri akal", "नमस्ते", "नमस्कार", "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", "آداب"]
+    withdraw = any(w in s for w in withdrawal_terms)
+    deposit = any(w in s for w in deposit_terms)
+    pension = any(w in s for w in ["pension", "पेंशन", "پنشن", "ਪੈਨਸ਼ਨ", "पेन्शन"])
+    if withdraw and deposit:
+        return {"intent": "unclear", "confidence": "low", "amount": "", "message": "Do you want to withdraw money or deposit money?", "engine": "fallback"}
+    if withdraw:
+        return {"intent": "withdrawal", "transaction": "pension withdrawal" if pension else "cash withdrawal", "confidence": "medium", "amount": amount, "message": "Withdrawal request understood. The amount must be stated or entered explicitly.", "engine": "fallback"}
+    if deposit:
+        return {"intent": "deposit", "transaction": "deposit", "confidence": "medium", "amount": amount, "message": "Deposit request understood. The amount must be stated or entered explicitly.", "engine": "fallback"}
+    if any(w in s for w in greetings):
+        return {"intent": "greeting", "confidence": "high", "amount": "", "message": "Hello. Tell me what you would like to do with your account.", "engine": "fallback"}
+    # Explicitly flag conflicting cues and unsupported account services rather than guessing.
+    unsupported_terms = ["open an account", "account opening", "new account", "change my address", "update my details", "change phone", "aadhaar", "aadhar", "pan card", "check balance", "balance inquiry", "transfer money", "send money"]
+    if any(w in s for w in unsupported_terms):
+        return {"intent": "unsupported", "confidence": "medium", "amount": "", "message": "This kiosk currently prepares only withdrawal and deposit drafts. Please ask bank staff for this request.", "engine": "fallback"}
+    return {"intent": "unclear", "confidence": "low", "amount": "", "message": "Please tell me whether you want to withdraw money or deposit money. You can speak naturally in Hindi or English.", "engine": "fallback"}
+
+
 @app.post("/api/intent")
 def intent(req: IntentRequest):
-    s = req.text.lower()
-    withdrawal_words = ['withdraw', 'pension', 'cash', 'निकाल', 'पेंशन', 'पैसे', 'पैसा', 'कढ', 'ਕਢ', 'ਕਢਵ', 'ਪੈਸੇ', 'پیسے', 'واپسی', 'پیسہ', 'رقم']
-    pension_words = ['pension', 'पेंशन', 'پنشن', 'ਪੈਨਸ਼ਨ']
-    if any(w in s for w in withdrawal_words):
-        amount_match = re.search(r"(?<!\w)(?:₹|rs\.?\s*)?([0-9]{1,7}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)(?!\w)", s)
-        amount = amount_match.group(1).replace(",", "") if amount_match else ""
-        return {"intent": "withdrawal", "transaction": "pension withdrawal" if any(w in s for w in pension_words) else "cash withdrawal", "confidence": "heuristic", "amount": amount, "message": "I can help prepare a withdrawal draft. What amount should I enter?"}
-    if any(w in s for w in ["deposit", "जमा", "ਜਮ੍ਹਾ", "جمع", "واریز"]):
-        return {"intent": "unsupported", "transaction": "deposit", "confidence": "heuristic", "amount": "", "message": "Deposit forms are not available in this demo yet."}
-    if any(w in s for w in ["aadhaar", "aadhar", "आधार", "ਆਧਾਰ", "آدھار", "آدھار", "seed", "link my"]):
-        return {"intent": "unsupported", "transaction": "aadhaar seeding", "confidence": "heuristic", "amount": "", "message": "Aadhaar seeding is not available in this demo."}
-    if any(w in s for w in ["loan", "cheque", "check book", "account opening", "mobile number", "address update", "बैलेंस", "ਚੈੱਕ", "قرض"]):
-        return {"intent": "unsupported", "transaction": "other banking request", "confidence": "heuristic", "amount": "", "message": "That form is not available in this demo yet."}
-    if re.search(r"\b(?:hello|hi|namaste|namaskar|adaab|aadaab|sat\s+sri\s+akal|sat\s+sri\s+akaal)\b", s) or any(w in s for w in ["नमस्ते", "नमस्कार", "ਸਤ ਸ੍ਰੀ ਅਕਾਲ", "آداب"]):
-        return {"intent": "greeting", "confidence": "heuristic", "message": "Hello. I can help prepare a withdrawal form draft."}
-    return {"intent": "unclear", "confidence": "low", "message": "I did not understand. Please say or type cash withdrawal or pension withdrawal."}
+    text = re.sub(r"\s+", " ", req.text).strip()
+    if not text:
+        return {"intent": "unclear", "confidence": "low", "amount": "", "message": "Please tell me what you need.", "engine": "fallback"}
+    result = _intent_from_model(text, req.language)
+    # Prefer deterministic, phrase-matched support for common Hindi/Urdu/Punjabi
+    # requests when the model returns an unclear result for an otherwise clear phrase.
+    fallback = _fallback_intent(text)
+    if result is None:
+        return fallback
+    # Deterministic phrase matches take precedence over model guesses for the two
+    # supported tasks. This prevents clear Hindi / Punjabi / Urdu requests from
+    # being rejected when the model is uncertain or labels them unsupported.
+    if fallback.get("intent") in {"withdrawal", "deposit"}:
+        return fallback
+    if result.get("intent") in {"unclear", "greeting"} and fallback.get("intent") == "unsupported":
+        return fallback
+    return result
 
 @app.post("/api/demo-profile/lookup")
 def lookup(data: dict):
@@ -299,18 +418,13 @@ def lookup(data: dict):
     record = find_account(account_id)
     if record is None:
         return {"status": "not_found", "profile": None, "message": "No synthetic demo account matches that exact number. Check the digits or use one of the generated sample passbooks."}
+    # Least-privilege response: return only fields used to populate the two supported forms.
+    # Sensitive identity references and unrelated profile fields remain server-side.
     profile = {
-        "account_id": record["account_number"], "name": record["full_name"], "phone": record["phone"],
-        "branch": record["branch_name"], "account_type": record["account_type"], "ifsc": record["ifsc"],
-        "cif": record["cif"], "balance": record["balance"], "address": record["address"],
-        "date_of_birth": record["date_of_birth"], "occupation": record["occupation"], "customer_ref": record["customer_ref"],
-        "identifications": record["identifications"], "source": record["source"],
-        "customer_id": record.get("customer_id"), "preferred_language": record.get("preferred_language", "English"),
-        "demo_id_card_url": f"/static/synthetic_documents/demo_aadhaar_cards/demo-aadhaar-{int(record.get('customer_id') or 0):03d}.png",
-        "demo_aadhaar_card_url": f"/static/synthetic_documents/demo_aadhaar_cards/demo-aadhaar-{int(record.get('customer_id') or 0):03d}.png",
-        "demo_pan_card_url": f"/static/synthetic_documents/demo_pan_cards/demo-pan-{int(record.get('customer_id') or 0):03d}.png",
+        "account_id": record["account_number"], "name": record["full_name"],
+        "phone": record["phone"], "branch": record["branch_name"], "balance": record["balance"]
     }
-    return {"status": "matched", "profile": profile, "message": "Matching fictional customer and account retrieved from the SQLite demo database. Confirm these details before continuing."}
+    return {"status": "matched", "profile": profile, "message": "Account matched. Required form fields are retrieved from the database without displaying a customer profile."}
 
 @app.post("/api/forms/prepare")
 def prepare(req: PrepareRequest):
@@ -325,6 +439,8 @@ def prepare(req: PrepareRequest):
         raise HTTPException(404, "No matching synthetic demo account was found. Check the account number and try again.")
     if req.name.strip() != record["full_name"] or req.phone != record["phone"]:
         raise HTTPException(422, "Confirm the customer name and phone number returned for this exact synthetic account.")
+    if float(req.amount) > float(record["balance"]):
+        raise HTTPException(409, detail={"code": "INSUFFICIENT_BALANCE", "balance": record["balance"]})
     if req.branch and req.branch != record["branch_name"]:
         raise HTTPException(422, "The branch does not match this account's synthetic database record.")
     if not req.name.isascii():
@@ -398,7 +514,7 @@ def _amount_words(value: str) -> str:
         result += " and " + under_thousand(paise) + " paise"
     return result + " only"
 
-def _withdrawal_pdf(req: PrepareRequest) -> bytes:
+def _withdrawal_pdf(req: PrepareRequest, include_counter_page: bool = False) -> bytes:
     if not req.confirmed or req.transaction not in {"cash withdrawal", "pension withdrawal"} or not re.fullmatch(r"\d{1,7}(?:\.\d{1,2})?", req.amount) or float(req.amount) <= 0 or not req.name or not re.fullmatch(r"\d{8,12}", req.account_id):
         raise HTTPException(422, "Confirm the supported transaction, positive amount, name, and 8–12 digit account number first.")
     record = find_account(req.account_id)
@@ -406,6 +522,8 @@ def _withdrawal_pdf(req: PrepareRequest) -> bytes:
         raise HTTPException(404, "No matching synthetic demo account was found. Check the account number and try again.")
     if req.name.strip() != record["full_name"] or req.phone != record["phone"]:
         raise HTTPException(422, "The name and phone number must match the confirmed SQLite account record.")
+    if float(req.amount) > float(record["balance"]):
+        raise HTTPException(409, detail={"code": "INSUFFICIENT_BALANCE", "balance": record["balance"]})
     if not req.name.isascii():
         raise HTTPException(422, "This PDF template supports English characters only. Enter the bank's English spelling; otherwise complete the name by hand on the printed draft.")
     if not re.fullmatch(r"\d{10}", req.phone):
@@ -428,15 +546,18 @@ def _withdrawal_pdf(req: PrepareRequest) -> bytes:
         for index, digit in enumerate(value):
             x = spec["first_digit_x"] + index * spec["step_x"]
             stream.extend(f"BT /F1 {spec['font_size']} Tf {x:.1f} {spec['baseline_y']} Td ({digit}) Tj ET\n".encode("ascii"))
-    marker = WITHDRAWAL_MAP["signature_marker"]
-    stream.extend(f"q 0.78 0.16 0.12 RG 1.5 w {marker['x']} {marker['y']} {marker['width']} {marker['height']} re S Q\n".encode("ascii"))
-    stream.extend(f"BT /F1 {marker['font_size']} Tf {marker['label_x']} {marker['label_y']} Td (SIGN HERE) Tj ET\n".encode("ascii"))
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
-               b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+               b"<< /Type /Pages /Kids [3 0 R 7 0 R] /Count 2 >>" if include_counter_page else b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
                f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page['width']} {page['height']}] /Resources << /XObject << /Im0 4 0 R >> /Font << /F1 5 0 R >> >> /Contents 6 0 R >>".encode("ascii"),
                b"<< /Type /XObject /Subtype /Image /Width " + str(image_width).encode() + b" /Height " + str(image_height).encode() + b" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + str(len(jpg)).encode() + b" >>\nstream\n" + jpg + b"\nendstream",
                b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
                b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + bytes(stream) + b"endstream"]
+    if include_counter_page:
+        counter_stream = ("BT /F1 24 Tf 72 690 Td (NEXT STEP: COUNTER 1) Tj ET\n"
+                          "BT /F1 14 Tf 72 645 Td (Take the printed draft to Counter 1 for withdrawal/deposit staff.) Tj ET\n"
+                          "BT /F1 12 Tf 72 615 Td (This is a synthetic demo form. No bank transaction has occurred.) Tj ET\n").encode("ascii")
+        objects.extend([b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 8 0 R >>",
+                        b"<< /Length " + str(len(counter_stream)).encode() + b" >>\nstream\n" + counter_stream + b"endstream"])
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"); offsets = [0]
     for idx, obj in enumerate(objects, 1):
         offsets.append(len(out)); out.extend(f"{idx} 0 obj\n".encode()); out.extend(obj); out.extend(b"\nendobj\n")
@@ -447,7 +568,7 @@ def _withdrawal_pdf(req: PrepareRequest) -> bytes:
 
 @app.post("/api/forms/pdf")
 def create_pdf(req: PrepareRequest):
-    return Response(content=_withdrawal_pdf(req), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=withdrawal-draft.pdf"})
+    return Response(content=_withdrawal_pdf(req, include_counter_page=True), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=withdrawal-draft.pdf"})
 
 
 def _blank_withdrawal_pdf() -> bytes:
@@ -475,7 +596,7 @@ def download_blank_withdrawal_template():
     return Response(content=_blank_withdrawal_pdf(), media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=synthetic-demo-withdrawal-blank.pdf"})
 
-def _sample_template_pdf(path: Path, overlays: dict[str, str] | None = None, form_id: str = "") -> bytes:
+def _sample_template_pdf(path: Path, overlays: dict[str, str] | None = None, form_id: str = "", include_counter_page: bool = False) -> bytes:
     jpg = path.read_bytes()
     image_width, image_height, color_space = _jpeg_info(jpg)
     page_spec = MAPPING_CONFIG.get("sample_forms", {}).get(form_id, {}).get("page", {"width": image_width, "height": image_height})
@@ -515,13 +636,19 @@ def _sample_template_pdf(path: Path, overlays: dict[str, str] | None = None, for
             if choice in request_text:
                 stream.extend(f"q 1.1 w {x} {y} m {x+10} {y+10} l {x+10} {y} m {x} {y+10} l S Q\n".encode("ascii"))
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
-               b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-               f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>".encode("ascii"),
+               b"<< /Type /Pages /Kids [3 0 R 7 0 R] /Count 2 >>" if include_counter_page else b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+               f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 6 0 R >>".encode("ascii"),
                b"<< /Type /XObject /Subtype /Image /Width " + str(image_width).encode() + b" /Height " + str(image_height).encode() + b" /ColorSpace " + color_space.encode() + b" /BitsPerComponent 8 /Filter /DCTDecode /Length " + str(len(jpg)).encode() + b" >>\nstream\n" + jpg + b"\nendstream",
                b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
                b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + bytes(stream) + b"endstream"]
     # Page resources require both the raster form and the standard font used by overlays.
     objects[2] = f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {width} {height}] /Resources << /XObject << /Im0 4 0 R >> /Font << /F1 5 0 R >> >> /Contents 6 0 R >>".encode("ascii")
+    if include_counter_page:
+        counter_stream = ("BT /F1 24 Tf 72 690 Td (NEXT STEP: COUNTER 1) Tj ET\n"
+                          "BT /F1 14 Tf 72 645 Td (Take the printed draft to Counter 1 for withdrawal/deposit staff.) Tj ET\n"
+                          "BT /F1 12 Tf 72 615 Td (This is a synthetic demo form. No bank transaction has occurred.) Tj ET\n").encode("ascii")
+        objects.extend([b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 8 0 R >>",
+                        b"<< /Length " + str(len(counter_stream)).encode() + b" >>\nstream\n" + counter_stream + b"endstream"])
     out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"); offsets = [0]
     for idx, obj in enumerate(objects, 1):
         offsets.append(len(out)); out.extend(f"{idx} 0 obj\n".encode()); out.extend(obj); out.extend(b"\nendobj\n")
@@ -541,7 +668,7 @@ def download_blank_template(form_id: str):
     path, filename = template
     return Response(content=_blank_template_pdf(path), media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
-def _render_sample_pdf(req: SampleFormRequest) -> tuple[bytes, str]:
+def _render_sample_pdf(req: SampleFormRequest, include_counter_page: bool = False) -> tuple[bytes, str]:
     template = FORM_TEMPLATES.get(req.form_id)
     allowed_fields = FORM_ALLOWED_FIELDS.get(req.form_id)
     if not template or not allowed_fields:
@@ -566,7 +693,7 @@ def _render_sample_pdf(req: SampleFormRequest) -> tuple[bytes, str]:
         if len(digits) > spec["cells"]:
             raise HTTPException(422, f"The {key.replace('_', ' ')} does not fit the form's digit cells.")
     path, filename = template
-    return _sample_template_pdf(path, req.fields, req.form_id), filename.replace(".pdf", "-draft.pdf")
+    return _sample_template_pdf(path, req.fields, req.form_id, include_counter_page=include_counter_page), filename.replace(".pdf", "-draft.pdf")
 
 @app.post("/api/forms/sample-preview")
 def preview_sample_form_pdf(req: SampleFormRequest):
@@ -575,7 +702,7 @@ def preview_sample_form_pdf(req: SampleFormRequest):
 
 @app.post("/api/forms/sample-pdf")
 def create_sample_form_pdf(req: SampleFormRequest):
-    content, filename = _render_sample_pdf(req)
+    content, filename = _render_sample_pdf(req, include_counter_page=True)
     return Response(content=content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 @app.post("/api/forms/withdrawal-preview")

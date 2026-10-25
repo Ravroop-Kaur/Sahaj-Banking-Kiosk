@@ -8,10 +8,9 @@
 - 60 fictional customers and 60 linked accounts with unique 12-digit account numbers.
 - 120 synthetic identification references (DEMO-ID and DEMO-PAN-like values) and 180 illustrative demo transactions.
 - 60 high-resolution synthetic passbooks with 10 account-number layouts and 0°/90°/180°/270° orientations, 60 synthetic Aadhaar-style mockups, 60 synthetic PAN-style mockups, and 60 legacy demo ID cards. Every requested document set maps to a customer/account record.
-- Clean, original high-resolution Sahaj Demo Bank form templates for withdrawal, deposit, transfer, account opening, and customer updates. The UI groups these into Withdrawal, Deposit, and Other Form categories.
-- OCR flow: upload passbook -> OCR account number only -> user confirms the account number -> exact SQLite lookup -> review the matching customer -> choose a form -> fill mapped fields from the matched record -> review an on-screen PDF preview, download the PDF draft, then automatically display the simulated Counter 3 handoff.
-- Account-opening form fields include the linked synthetic ID/PAN-like references where those fields are available.
-- Sarvam speech is optional. The app runs without a Sarvam API key; speech endpoints require a valid key.
+- The kiosk UI offers only Withdrawal and Deposit forms. Account opening, transfers, customer-detail updates, and identity-document workflows are removed because they require additional information or sensitive handling.
+- Sample flow: choose a supplied passbook -> read the account number -> user confirms the account number -> exact SQLite lookup in the background -> choose Withdrawal or Deposit -> required account-holder fields are filled automatically -> enter only the transaction amount -> preview/download the PDF draft -> simulated Counter 3 handoff. No customer-profile summary or Aadhaar/PAN details are displayed.
+- The database may retain synthetic identity references for internal test data, but the lookup API does not return them to the UI.
 
 ## Start on Windows
 
@@ -19,7 +18,6 @@
 2. Double-click `START_KIOSK.bat`.
 3. Wait for the backend to start. It opens `http://127.0.0.1:8766` in your browser.
 4. The first run installs Python dependencies. Internet access is needed for that install.
-5. If using Sarvam speech, add your key to `.env` (copy `.env.example` first). Never share `.env` or commit it to Git.
 
 You can also start manually from this folder:
 
@@ -60,5 +58,31 @@ This regenerates the 60 linked profiles and documents, the clean form templates,
 
 - Do not enter real Aadhaar numbers, PINs, OTPs, passwords, CVVs, or real banking credentials.
 - Keep the SQLite database on the backend. Use parameterized queries.
-- Sarvam API keys stay in `.env` on the backend; never put them in browser JavaScript.
 - Generated PDFs are draft forms only. The app does not submit forms or initiate transactions.
+
+## Gemini natural-language and realtime voice
+
+Sahaj uses the Google Gemini API for both flexible intent classification and live voice conversation. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey), then put it in the server-side `.env` file:
+
+```dotenv
+GEMINI_API_KEY=your_key_here
+GEMINI_INTENT_MODEL=gemini-2.5-flash
+GEMINI_LIVE_MODEL=models/gemini-2.5-flash-native-audio-preview-12-2025
+GEMINI_LIVE_VOICE=Kore
+```
+
+Restart `START_KIOSK.bat` after changing `.env`. The browser connects to the local FastAPI WebSocket proxy; the permanent Gemini API key is not sent to frontend JavaScript. Gemini Live handles streaming audio, spoken responses, and automatic end-of-turn detection. The intent endpoint classifies everyday English, Devanagari Hindi, romanized Hindi, and mixed Hindi-English into `withdrawal`, `deposit`, `greeting`, `unsupported`, or `unclear`. Low-confidence or conflicting financial requests are handled cautiously.
+
+If Gemini is not configured or the model is unavailable, the kiosk retains its manual route and deterministic multilingual intent fallback. Model availability and quota depend on your Google AI Studio project. This prototype only prepares paper-form drafts; it does not connect to a bank or move money. Never speak PINs, OTPs, passwords, or other secrets.
+
+
+
+### Voice behavior in this build
+
+The voice screen asks for microphone permission, speaks the initial Hindi and English greeting using browser speech synthesis, then starts browser speech recognition. Recognized speech is passed to the kiosk intent endpoint (Gemini intent classification when configured, deterministic fallback otherwise). This avoids depending on the current Gemini Live WebSocket audio path for microphone transcription. Browser speech recognition requires a supported Chromium browser and may use the browser vendor's online recognition service.
+
+## Latest preview and balance safeguards
+- Completed-form preview automatically scrolls into view after it is generated.
+- The signature guidance is a browser-only overlay and is not printed on the form. It is positioned separately for withdrawal and deposit previews; exact alignment should be checked in the target browser because embedded PDF viewers vary.
+- Withdrawal amounts above the matched synthetic SQLite balance are rejected. The interface asks in the selected language whether the customer wants to see the current demo balance, then prompts for a lower amount.
+- Downloaded withdrawal and deposit drafts include a separate second page directing the customer to Counter 3 for staff review. The form preview itself remains a single-page form without the instruction overlay.
