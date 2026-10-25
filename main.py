@@ -157,6 +157,61 @@ async def gemini_check():
     return {"ok": any(r["available"] for r in results), "problem": problem, "models": results}
 
 
+@app.get("/api/speech/config")
+def speech_config():
+    """Expose only whether Deepgram is configured; never expose its API key."""
+    return {"deepgram_available": bool(os.getenv("DEEPGRAM_API_KEY", "").strip())}
+
+
+@app.post("/api/speech/transcribe")
+async def deepgram_transcribe(file: UploadFile = File(...)):
+    """Transcribe a short voice utterance through Deepgram without exposing the API key."""
+    api_key = os.getenv("DEEPGRAM_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Alternative speech recognition is not configured.")
+    if file.content_type not in {"audio/webm", "audio/ogg", "audio/wav", "audio/mp4", "audio/mpeg", "audio/webm;codecs=opus", "application/octet-stream"}:
+        # Browsers may report audio/webm; codecs are checked separately below.
+        if not (file.content_type or "").startswith("audio/"):
+            raise HTTPException(status_code=415, detail="Unsupported audio format.")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="No audio was received.")
+    if len(raw) > 12 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Audio is too large.")
+    params = "model=whisper-large&smart_format=true&punctuate=true"
+    req = urlrequest.Request(
+        "https://api.deepgram.com/v1/listen?" + params,
+        data=raw,
+        headers={"Authorization": "Token " + api_key,
+                 "Content-Type": file.content_type or "audio/webm"},
+        method="POST",
+    )
+    try:
+        def call_deepgram():
+            with urlrequest.urlopen(req, timeout=25) as response:
+                return json.loads(response.read().decode("utf-8"))
+        result = await run_in_threadpool(call_deepgram)
+    except urlerror.HTTPError as exc:
+        try:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+        except Exception:
+            detail = ""
+        print(f"[Deepgram STT] provider HTTP {exc.code}: {detail}")
+        raise HTTPException(status_code=502, detail="Alternative speech recognition is temporarily unavailable.") from exc
+    except Exception as exc:
+        print(f"[Deepgram STT] request failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(status_code=502, detail="Alternative speech recognition is temporarily unavailable.") from exc
+    try:
+        channel = result["results"]["channels"][0]["alternatives"][0]
+        transcript = (channel.get("transcript") or "").strip()
+        detected_language = result.get("results", {}).get("channels", [{}])[0].get("detected_language", "")
+    except (KeyError, IndexError, TypeError):
+        transcript, detected_language = "", ""
+    if not transcript:
+        raise HTTPException(status_code=422, detail="No clear speech was recognized.")
+    return {"transcript": transcript, "language": detected_language, "provider": "Deepgram"}
+
+
 @app.websocket("/api/gemini/live")
 async def gemini_live_proxy(client: WebSocket):
     """Proxy Gemini Live traffic so the Google API key is never sent to the browser."""
@@ -398,12 +453,18 @@ def _recognize_local_variants(folder: Path) -> tuple[str, str]:
         candidates = []
         paths = sorted(folder.glob("*.png"))
         preferred = [p for p in paths if p.name in {"gray_0.png", "threshold_0.png", "gray_180.png", "threshold_180.png"}]
-        ordered = preferred + [p for p in paths if p not in preferred]
-        seen = set()
-        for path in ordered:
-            for psm in ("6", "11"):
-                result = subprocess.run([tesseract, str(path), "stdout", "-l", "eng", "--oem", "3", "--psm", psm],
-                                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
+        ordered = (preferred + [p for p in paths if p not in preferred])[:8]
+        for path_index, path in enumerate(ordered):
+            # Keep native Render response times bounded: try all four orientations
+            # with PSM 6 and use PSM 11 only on the first four likely candidates.
+            modes = ("6", "11") if path_index < 4 else ("6",)
+            for psm in modes:
+                try:
+                    result = subprocess.run([tesseract, str(path), "stdout", "-l", "eng", "--oem", "3", "--psm", psm],
+                                            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8)
+                except subprocess.TimeoutExpired:
+                    print(f"[Local OCR] Tesseract timed out for {path.name} (PSM {psm}); continuing with remaining variants.")
+                    continue
                 candidate = result.stdout
                 candidates.append(candidate)
                 normalized = re.sub(r"\s+", " ", candidate).lower()
@@ -423,8 +484,9 @@ def _recognize_local_variants(folder: Path) -> tuple[str, str]:
         candidates = [item.get("text", "") for item in variants]
         engine = "Windows OCR (local)"
     else:
-        # No Tesseract/Windows OCR on this server (e.g. Render's Python runtime): read the photo with Gemini instead.
-        return _gemini_read_passbook(folder), "Gemini vision"
+        # Render native Python deployments can install Tesseract through apt.txt.
+        # If the binary is absent, the caller will attempt Gemini Vision.
+        return "", "No local OCR engine"
 
     def score(text: str) -> tuple[int, int, int, int]:
         normalized = re.sub(r"\s+", " ", text).lower()
@@ -453,8 +515,33 @@ async def ocr_passbook(file: UploadFile = File(...)):
             with tempfile.TemporaryDirectory(prefix="kiosk-ocr-") as work:
                 folder = Path(work)
                 variants = _prepare_ocr_variants(raw, folder, file.filename or ".jpg")
-                text, engine = _recognize_local_variants(folder)
-                return text, engine, len(variants)
+                # Prefer local OCR when it is installed: this keeps passbook reading
+                # independent of Gemini outages and avoids sending images externally.
+                try:
+                    local_text, local_engine = _recognize_local_variants(folder)
+                except Exception as local_error:
+                    print(f"[Local OCR] failed; attempting Gemini Vision: {type(local_error).__name__}: {local_error}")
+                    local_text, local_engine = "", "Local OCR unavailable"
+
+                def has_labelled_account(candidate: str) -> bool:
+                    normalized = re.sub(r"\s+", " ", candidate).lower()
+                    labelled = re.search(r"(?:account|a\s*/\s*c)\s*(?:number|no\.?|#|id)", normalized)
+                    return bool(labelled and re.search(r"(?<!\d)\d{8,18}(?!\d)", candidate))
+
+                if has_labelled_account(local_text):
+                    return local_text, local_engine, len(variants)
+
+                try:
+                    vision_text = _gemini_read_passbook(folder)
+                    if has_labelled_account(vision_text):
+                        return vision_text, "Gemini vision", len(variants)
+                    # Keep the best available OCR output for the parser/manual correction UI.
+                    return (vision_text or local_text), ("Gemini vision" if vision_text else local_engine), len(variants)
+                except Exception as vision_error:
+                    print(f"[Passbook OCR] Gemini Vision failed; using local OCR result: {type(vision_error).__name__}: {vision_error}")
+                    if local_text.strip():
+                        return local_text, local_engine, len(variants)
+                    raise RuntimeError("Gemini Vision failed and local OCR could not read the image.") from vision_error
 
         text, engine, variant_count = await run_in_threadpool(run_passbook_ocr)
         flat_text = re.sub(r"\s+", " ", text).strip()

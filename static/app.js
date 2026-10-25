@@ -40,7 +40,7 @@ const counterCopy={
  ur:{title:'اگلا مرحلہ: کاؤنٹر 1',instruction:'آپ کا فارم ڈاؤن لوڈ ہو گیا ہے۔ رقم نکلوانے یا جمع کروانے میں مدد کے لیے پرنٹ شدہ فارم کاؤنٹر 1 پر لے جائیں۔',current:'کاؤنٹر 1 · یہاں جائیں',currentDesc:'رقم نکلوانا اور جمع کروانا',second:'کاؤنٹر 2',secondDesc:'اکاؤنٹ اور دیگر خدمات',disclaimer:'یہ ڈیمو کے لیے فرضی کاؤنٹر فہرست ہے۔ کوئی بینک لین دین جمع نہیں کیا گیا۔ یہ اسکرین 10 سیکنڈ بعد خود بند ہو جائے گی۔',done:'سیشن ختم کریں'}
 };
 function localizeCounter(){const t=counterCopy[language]||counterCopy.en;for(const [id,key] of [['counterTitle','title'],['counterInstruction','instruction'],['counterCurrentTitle','current'],['counterCurrentDesc','currentDesc'],['counterSecondTitle','second'],['counterSecondDesc','secondDesc'],['counterDisclaimer','disclaimer'],['counterDone','done']]){const el=$('#'+id);if(el)el.textContent=t[key]}}
-function localize(){const w=words(language);const languageSwitch=$('#switchLanguage');if(languageSwitch)languageSwitch.textContent=({en:'Switch language',hi:'भाषा बदलें',pa:'ਭਾਸ਼ਾ ਬਦਲੋ',ur:'زبان تبدیل کریں',doi:'भाशा बदलो'}[language]||'Switch language');document.documentElement.lang=language;document.documentElement.dir=language==='ur'?'rtl':'ltr';$('#permissionTitle').textContent=w.permissionTitle;$('#permissionText').textContent=w.permissionText;$('#voiceContinue').textContent=w.voice;$('#manualContinue').textContent=w.manual;$('#languageScreen h1').textContent=w.language;$('#languageNext').textContent=w.next;$('#uploadScreen h1').textContent=w.upload;$('#uploadScreen>p').textContent=w.uploadDesc;const uploadTileTitle=$('.upload-tile strong');if(uploadTileTitle)uploadTileTitle.textContent=w.choosePhoto;const uploadTileHint=$('.upload-tile span:last-child');if(uploadTileHint)uploadTileHint.textContent=w.tapPhoto;$('#extract').textContent=w.process;$('#requestTitle').textContent=w.help;$('#requestDescription').textContent=w.example;$('#utterance').placeholder=w.example;$('#requestVoice').textContent=w.speak;$('#requestManual').textContent=w.manual;$('#requestStop').textContent=w.stop;if(mode!=='voice'){$('#voiceGreeting').textContent=w.greeting;$('#voiceHint').textContent=voicePrompt(language)}$('#listen').textContent=w.speak;$('#stop').textContent=w.stop;$('#listening').textContent=language==='en'?'Listening…':language==='ur'?'سن رہی ہوں…':language==='pa'?'ਸੁਣ ਰਹੀ ਹਾਂ…':'सुन रही हूँ…';$('#requestListening').textContent=w.listening;$('#listening').textContent=w.listening;$('#withdrawalScreen h1').textContent=w.withdrawal;$('#amountLabel').firstChild.textContent=w.amount+' ';$('#continueWithdrawal').textContent=w.continueDraft;$('#continueUpload').textContent=w.uploadBook;$('#prepare').textContent=w.reviewDraft;$('#download').textContent=w.download;applyManualLocale();refreshAmountBox();localizeCounter();}
+function localize(){const w=words(language);const languageSwitch=$('#switchLanguage');if(languageSwitch)languageSwitch.textContent=({en:'Switch language',hi:'भाषा बदलें',pa:'ਭਾਸ਼ਾ ਬਦਲੋ',ur:'زبان تبدیل کریں',doi:'भाशा बदलो'}[language]||'Switch language');document.documentElement.lang=language;document.documentElement.dir=language==='ur'?'rtl':'ltr';$('#permissionTitle').textContent=w.permissionTitle;$('#permissionText').textContent=w.permissionText;$('#voiceContinue').textContent=w.voice;$('#manualContinue').textContent=w.manual;$('#languageScreen h1').textContent=w.language;$('#languageNext').textContent=w.next;$('#uploadScreen h1').textContent=w.upload;$('#uploadScreen>p').textContent=w.uploadDesc;const uploadTileTitle=$('.upload-tile strong');if(uploadTileTitle)uploadTileTitle.textContent=w.choosePhoto;const uploadTileHint=$('.upload-tile span:last-child');if(uploadTileHint)uploadTileHint.textContent=w.tapPhoto;$('#extract').textContent=w.process;$('#requestTitle').textContent=w.help;$('#requestDescription').textContent=w.example;const confirmLabels={en:['Yes, continue','No, change amount'],hi:['हाँ, आगे बढ़ें','नहीं, राशि बदलें'],pa:['ਹਾਂ, ਅੱਗੇ ਵਧੋ','ਨਹੀਂ, ਰਕਮ ਬਦਲੋ'],ur:['ہاں، جاری رکھیں','نہیں، رقم بدلیں']};const cl=confirmLabels[language]||confirmLabels.en;$('#amountConfirmYes').textContent=cl[0];$('#amountConfirmNo').textContent=cl[1];$('#utterance').placeholder=w.example;$('#requestVoice').textContent=w.speak;$('#requestManual').textContent=w.manual;$('#requestStop').textContent=w.stop;if(mode!=='voice'){$('#voiceGreeting').textContent=w.greeting;$('#voiceHint').textContent=voicePrompt(language)}$('#listen').textContent=w.speak;$('#stop').textContent=w.stop;$('#listening').textContent=language==='en'?'Listening…':language==='ur'?'سن رہی ہوں…':language==='pa'?'ਸੁਣ ਰਹੀ ਹਾਂ…':'सुन रही हूँ…';$('#requestListening').textContent=w.listening;$('#listening').textContent=w.listening;$('#withdrawalScreen h1').textContent=w.withdrawal;$('#amountLabel').firstChild.textContent=w.amount+' ';$('#continueWithdrawal').textContent=w.continueDraft;$('#continueUpload').textContent=w.uploadBook;$('#prepare').textContent=w.reviewDraft;$('#download').textContent=w.download;applyManualLocale();refreshAmountBox();localizeCounter();}
 function applyManualLocale(){const t=manualCopy[language]||manualCopy.en;for(const key of ['languageTitle','languageDescription','languageNote','sampleHeading','sampleDescription','sampleOne','sampleTwo','sampleThree','uploadTitle','uploadDescription','accountTitle','accountIntro','accountLabel','formsTitle','formsIntro']){const el=$('#'+key);if(el&&t[key]){if(key==='accountLabel')el.firstChild.textContent=t[key]+' ';else el.textContent=t[key];}}$('#lookupAccount').textContent='Confirm account number & continue';$('#confirmProfileText').textContent=t.confirm;$('#continueToForms').textContent=t.toForms;$('#changePhoto').textContent=t.changePhoto;$('#formsBack').textContent=t.startOver;$('#withdrawalTitle').textContent=words(language).withdrawal;$('#holderLabel').firstChild.textContent=({en:'Account holder name',hi:'खाताधारक का नाम',doi:'खाताधारक दा नांऽ',ur:'اکاؤنٹ ہولڈر کا نام',pa:'ਖਾਤਾਧਾਰਕ ਦਾ ਨਾਮ'}[language])+' ';$('#accountNumberLabel').firstChild.textContent=({en:'Account number',hi:'खाता संख्या',doi:'खाता नंबर',ur:'اکاؤنٹ نمبر',pa:'ਖਾਤਾ ਨੰਬਰ'}[language])+' ';$('#phoneLabel').firstChild.textContent=({en:'Phone number',hi:'फ़ोन नंबर',doi:'फोन नंबर',ur:'فون نمبر',pa:'ਫ਼ੋਨ ਨੰਬਰ'}[language])+' ';$('#branchLabel').firstChild.textContent=({en:'Branch',hi:'शाखा',doi:'शाखा',ur:'برانچ',pa:'ਸ਼ਾਖਾ'}[language])+' ';$('#profileDataNote').textContent=({en:'Customer and account data come from the confirmed demo record. Check OCR suggestions.',hi:'ग्राहक और खाते की जानकारी पुष्टि किए गए डेमो रिकॉर्ड से है। OCR सुझाव जाँचें।',doi:'ग्राहक ते खाते दी जानकारी पक्के डेमो रिकॉर्ड थमां ऐ। OCR सुझाव जांचो।',ur:'صارف اور اکاؤنٹ کی معلومات تصدیق شدہ ڈیمو ریکارڈ سے ہیں۔ OCR کی تجاویز چیک کریں۔',pa:'ਗਾਹਕ ਅਤੇ ਖਾਤੇ ਦੇ ਵੇਰਵੇ ਪੁਸ਼ਟੀ ਕੀਤੇ ਡੈਮੋ ਰਿਕਾਰਡ ਤੋਂ ਹਨ। OCR ਸੁਝਾਅ ਜਾਂਚੋ।'}[language]);$('#transactionLabel').firstChild.textContent=t.transactionType+' ';$('#amountLabel').firstChild.textContent=t.withdrawAmount+' ';$('#confirmAmountText').textContent=t.confirmAmount;$('#prepare').textContent=t.reviewDraft;$('#download').textContent=t.downloadDraft;$('.blank-template').textContent=t.blankForm;$('#withdrawalScreen details summary').textContent=t.reviewDetails;$('#signatureHelp').innerHTML=t.signatureHelp.replace('SIGN HERE','<strong>SIGN HERE</strong>');const footer=$('#footerText');if(footer)footer.textContent=t.sampleSafe;document.querySelectorAll('[data-sample]').forEach(b=>b.textContent=({en:'Use this sample',hi:'इस नमूने का उपयोग करें',doi:'एह् नमूना बरतो',ur:'یہ نمونہ استعمال کریں',pa:'ਇਹ ਨਮੂਨਾ ਵਰਤੋ'}[language]));document.querySelectorAll('[data-sample]').forEach(b=>b.textContent=({en:'Select this passbook',hi:'इस पासबुक को चुनें',doi:'एह् पासबुक चुनो',ur:'یہ پاس بک منتخب کریں',pa:'ਇਹ ਪਾਸਬੁੱਕ ਚੁਣੋ'}[language]));document.querySelectorAll('[data-form]').forEach((button,i)=>{const strong=button.querySelector('strong'),span=button.querySelector('span');const titles=[t.withdrawForm,t.depositForm,t.sbiOpenForm,t.idfcForm,t.dtbForm,t.dcbForm],subs=[t.withdrawSub,t.depositSub,'',t.idfcSub,'',t.dcbSub];if(strong&&titles[i])strong.textContent=titles[i];if(span&&subs[i])span.textContent=subs[i]});$('#withdrawalType').options[0].text=t.cash;$('#withdrawalType').options[1].text=t.pension;$('#formsBack').textContent=t.startOver;
  const ui={en:{switch:'Switch language',preview:'Preview completed form',download:'Download PDF after reviewing preview',back:'Choose another form',passbook:'Account-holder details are filled from the matched account record.',notice:'Enter only the deposit amount. Other fields are filled automatically from the account record.',fields:{name:'Account holder name',account:'Account number',branch:'Branch',phone:'Phone number',amount:'Deposit amount (INR)'}},hi:{switch:'भाषा बदलें',preview:'फ़ॉर्म का पूर्वावलोकन देखें',download:'पूर्वावलोकन जाँचकर PDF डाउनलोड करें',back:'दूसरा फ़ॉर्म चुनें',passbook:'खाताधारक की जानकारी मिलान किए गए खाते से भरी गई है।',notice:'केवल जमा राशि दर्ज करें। बाकी जानकारी खाते से अपने आप भरी जाएगी।',fields:{name:'खाताधारक का नाम',account:'खाता संख्या',branch:'शाखा',phone:'फ़ोन नंबर',amount:'जमा राशि (₹)'}},pa:{switch:'ਭਾਸ਼ਾ ਬਦਲੋ',preview:'ਭਰੇ ਫਾਰਮ ਦੀ ਝਲਕ ਵੇਖੋ',download:'ਝਲਕ ਜਾਂਚ ਕੇ PDF ਡਾਊਨਲੋਡ ਕਰੋ',back:'ਹੋਰ ਫਾਰਮ ਚੁਣੋ',passbook:'ਖਾਤਾਧਾਰਕ ਦੇ ਵੇਰਵੇ ਮਿਲਾਏ ਖਾਤੇ ਤੋਂ ਭਰੇ ਗਏ ਹਨ।',notice:'ਸਿਰਫ਼ ਜਮ੍ਹਾਂ ਰਕਮ ਦਰਜ ਕਰੋ। ਬਾਕੀ ਵੇਰਵੇ ਖਾਤੇ ਤੋਂ ਆਪਣੇ ਆਪ ਭਰੇ ਜਾਣਗੇ।',fields:{name:'ਖਾਤਾਧਾਰਕ ਦਾ ਨਾਮ',account:'ਖਾਤਾ ਨੰਬਰ',branch:'ਸ਼ਾਖਾ',phone:'ਫ਼ੋਨ ਨੰਬਰ',amount:'ਜਮ੍ਹਾਂ ਰਕਮ (₹)'}},ur:{switch:'زبان تبدیل کریں',preview:'فارم کا پیش منظر دیکھیں',download:'پیش منظر دیکھ کر PDF ڈاؤن لوڈ کریں',back:'دوسرا فارم منتخب کریں',passbook:'اکاؤنٹ کی تفصیل تصدیق شدہ ریکارڈ سے بھری گئی ہے۔',notice:'صرف جمع رقم درج کریں۔ باقی معلومات ریکارڈ سے خود بھر دی جائیں گی۔',fields:{name:'اکاؤنٹ ہولڈر کا نام',account:'اکاؤنٹ نمبر',branch:'برانچ',phone:'فون نمبر',amount:'جمع رقم (₹)'}},doi:{switch:'भाशा बदलो',preview:'भरे फॉर्म दा पूर्वावलोकन दिक्खो',download:'पूर्वावलोकन जांचियै PDF डाउनलोड करो',back:'दूआ फॉर्म चुनो',passbook:'खाताधारक दी जानकारी मिलाए खाते थमां भरी गेई ऐ।',notice:'सिर्फ जमा रकम दर्ज करो। बाकी जानकारी खाते थमां अपने आप भरी जाग।',fields:{name:'खाताधारक दा नांऽ',account:'खाता नंबर',branch:'शाखा',phone:'फोन नंबर',amount:'जमा रकम (₹)'}}};
  const u=ui[language]||ui.en;$('#switchLanguage').textContent=u.switch;$('#previewSampleForm').textContent=u.preview;$('#downloadSampleForm').textContent=u.download;$('#otherFormBack').textContent=u.back;if($('#otherFormPassbook').textContent)$('#otherFormPassbook').textContent=u.passbook;if($('#otherFormNotice').textContent)$('#otherFormNotice').textContent=u.notice;document.querySelectorAll('#selectedFormFields input[data-field]').forEach(input=>{const label=input.parentElement;if(label&&label.firstChild&&u.fields[input.dataset.field])label.firstChild.textContent=u.fields[input.dataset.field]});}
@@ -72,14 +72,24 @@ function amountReply(code,amount){return{en:`I heard ₹${amount}. Say another a
 function amountClarify(code){return{en:'Please say the amount using digits, or type it in the amount box.',hi:'राशि अंक में बोलें या राशि वाले खाने में टाइप करें।',doi:'रकम अंकें च बोलो जां रकम आले खाने च टाइप करो।',ur:'رقم ہندسہٕ منز وُچھِو یا رقم خانہٕ منز ٹائپ کٔرِو۔',pa:'ਰਕਮ ਅੰਕਾਂ ਵਿੱਚ ਬੋਲੋ ਜਾਂ ਰਕਮ ਵਾਲੇ ਖਾਨੇ ਵਿੱਚ ਲਿਖੋ।'}[code]}
 function isAffirmative(text){return/^(yes|yeah|correct|ठीक|हाँ|हां|हांजी|हां जी|ਹਾਂ|ਹਾਂਜੀ|آری|درست)[!?.\s]*$/i.test(text.trim())}
 function isGreeting(text){return/^(hello|hi|namaste|namaskar|नमस्ते|नमस्कार|ਸਤ\s*ਸ੍ਰੀ\s*ਅਕਾਲ|آداب)[!?.\s]*$/i.test(text.trim())}
-async function say(text,code=speakingLanguage,onend=null){if(!text){onend?.();return}if(geminiActive()){geminiNote('Tell the customer exactly this: '+text);if(onend&&onend!==startRecognition)onend();return}speechCancelled=false;if(mode==='voice'){listeningUI(false);setListeningVisual(false);$('#listening').hidden=true;$('#requestListening').hidden=true;showVoiceStatus('Speaking…');$('#requestTranscript').hidden=true;$('#requestResult').hidden=true;$('#voiceChat').replaceChildren()}if(window.speechSynthesis&&window.SpeechSynthesisUtterance){window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=synthLocale(code);try{const vs=await getVoicesWhenReady();const v=chooseVoice(vs,[synthLocale(code)]);if(v)u.voice=v;else if(code==='pa'||code==='ur'){/* No Punjabi/Urdu voice installed in this browser: keep the text on screen instead of mispronouncing it. */showVoiceStatus(text);onend?.();return}}catch(e){console.debug('Voice lookup failed',e)}u.onstart=()=>{setListeningVisual(false);$('#listening').hidden=true;$('#requestListening').hidden=true};u.onend=()=>{setListeningVisual(false);if(!speechCancelled)onend?.()};u.onerror=()=>{setListeningVisual(false);if(!speechCancelled)onend?.()};window.speechSynthesis.speak(u)}else onend?.();}
+async function say(text,code=speakingLanguage,onend=null){if(!text){onend?.();return}if(geminiActive()){geminiNote('Tell the customer exactly this: '+text);if(onend&&onend!==startRecognition)onend();return}speechCancelled=false;if(mode==='voice'){listeningUI(false);setListeningVisual(false);$('#listening').hidden=true;$('#requestListening').hidden=true;showVoiceStatus(fixedStatus('speaking'));$('#requestTranscript').hidden=true;$('#requestResult').hidden=true;$('#voiceChat').replaceChildren()}if(window.speechSynthesis&&window.SpeechSynthesisUtterance){window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=synthLocale(code);try{const vs=await getVoicesWhenReady();const v=chooseVoice(vs,[synthLocale(code)]);if(v)u.voice=v;else if(code==='pa'||code==='ur'){/* No Punjabi/Urdu voice installed in this browser: keep the text on screen instead of mispronouncing it. */showVoiceStatus(text);onend?.();return}}catch(e){console.debug('Voice lookup failed',e)}u.onstart=()=>{setListeningVisual(false);$('#listening').hidden=true;$('#requestListening').hidden=true};u.onend=()=>{setListeningVisual(false);if(!speechCancelled)onend?.()};u.onerror=()=>{setListeningVisual(false);if(!speechCancelled)onend?.()};window.speechSynthesis.speak(u)}else onend?.();}
 function showVoiceStatus(message){$('#voiceStatus').textContent=message;$('#requestStatus').textContent=message}
+// App-owned status strings must follow the selected display language. Never put raw model
+// transcript text into status labels: Gemini may return Urdu script during a Hindi session.
+function fixedStatus(kind){const c=language;const labels={
+ listening:{en:'Listening…',hi:'सुन रही हूँ…',pa:'ਸੁਣ ਰਹੀ ਹਾਂ…',ur:'سن رہی ہوں…'},
+ speaking:{en:'Speaking…',hi:'बोल रही हूँ…',pa:'ਬੋਲ ਰਹੀ ਹਾਂ…',ur:'بات کر رہی ہوں…'},
+ fallback:{en:'Voice assistance is continuing.',hi:'आवाज़ की सहायता जारी है।',pa:'ਆਵਾਜ਼ ਰਾਹੀਂ ਮਦਦ ਜਾਰੀ ਹੈ।',ur:'آواز کے ذریعے مدد جاری ہے۔'},
+ choosePassbook:{en:'Please choose your passbook on the screen.',hi:'कृपया स्क्रीन पर अपनी पासबुक चुनें।',pa:'ਕਿਰਪਾ ਕਰਕੇ ਸਕ੍ਰੀਨ ਉੱਤੇ ਆਪਣੀ ਪਾਸਬੁੱਕ ਚੁਣੋ।',ur:'براہِ کرم اسکرین پر اپنی پاس بک منتخب کریں۔'}
+};return (labels[kind]||labels.listening)[c]||(labels[kind]||labels.listening).en}
+function setStatusFromModelText(_text){/* Intentionally ignored: app status is controlled by the selected UI language. */}
 function showLoading(title,detail='Please wait while the kiosk processes this step.'){const overlay=$('#loadingOverlay');if(!overlay)return;$('#loadingTitle').textContent=title;$('#loadingDetail').textContent=detail;overlay.hidden=false;document.body.setAttribute('aria-busy','true')}
 function hideLoading(){const overlay=$('#loadingOverlay');if(overlay)overlay.hidden=true;document.body.removeAttribute('aria-busy')}
 function setListeningVisual(active,{greeting=false}={}){const actuallyListening=!!active&&!greeting&&!window.speechSynthesis?.speaking&&!geminiMicPaused&&!geminiSpeaking;document.body.classList.toggle('is-listening',actuallyListening);document.body.classList.remove('greeting-mode');const badge=$('#listening');if(badge){badge.hidden=!actuallyListening;badge.textContent=language==='en'?'Listening…':language==='ur'?'سن رہی ہوں…':language==='pa'?'ਸੁਣ ਰਹੀ ਹਾਂ…':'सुन رہی हूँ…'}const requestBadge=$('#requestListening');if(requestBadge)requestBadge.hidden=!actuallyListening;}
-function loadingCopy(kind){const c={en:{gemini:['Connecting to Gemini…','Setting up voice assistance'],passbook:['Reading your passbook…','Extracting details and matching the demo account']},hi:{gemini:['Gemini से जुड़ रहे हैं…','आवाज़ की सहायता तैयार हो रही है'],passbook:['पासबुक पढ़ी जा रही है…','जानकारी निकाली जा रही है और खाते का मिलान हो रहा है']},ur:{gemini:['Gemini سے رابطہ ہو رہا ہے…','آواز کی مدد تیار کی جا رہی ہے'],passbook:['پاس بک پڑھی جا رہی ہے…','تفصیل نکال کر ڈیمو اکاؤنٹ سے ملائی جا رہی ہے']},pa:{gemini:['Gemini ਨਾਲ ਜੁੜ ਰਹੇ ਹਾਂ…','ਆਵਾਜ਼ ਸਹਾਇਤਾ ਤਿਆਰ ਹੋ ਰਹੀ ਹੈ'],passbook:['ਪਾਸਬੁੱਕ ਪੜ੍ਹੀ ਜਾ ਰਹੀ ਹੈ…','ਵੇਰਵੇ ਕੱਢ ਕੇ ਡੈਮੋ ਖਾਤੇ ਨਾਲ ਮਿਲਾਏ ਜਾ ਰਹੇ ਹਨ']}};return(c[language]||c.en)[kind]||c.en.passbook}
+function loadingCopy(kind){const c={en:{gemini:['Connecting…','Setting up voice assistance'],passbook:['Reading your passbook…','Extracting details and matching the demo account']},hi:{gemini:['कनेक्ट हो रहा है…','आवाज़ की सहायता तैयार हो रही है'],passbook:['पासबुक पढ़ी जा रही है…','जानकारी निकाली जा रही है और खाते का मिलान हो रहा है']},ur:{gemini:['رابطہ قائم ہو رہا ہے…','آواز کی مدد تیار کی جا رہی ہے'],passbook:['پاس بک پڑھی جا رہی ہے…','تفصیل نکال کر ڈیمو اکاؤنٹ سے ملائی جا رہی ہے']},pa:{gemini:['ਕਨੈਕਟ ਹੋ ਰਿਹਾ ਹੈ…','ਆਵਾਜ਼ ਸਹਾਇਤਾ ਤਿਆਰ ਹੋ ਰਹੀ ਹੈ'],passbook:['ਪਾਸਬੁੱਕ ਪੜ੍ਹੀ ਜਾ ਰਹੀ ਹੈ…','ਵੇਰਵੇ ਕੱਢ ਕੇ ਡੈਮੋ ਖਾਤੇ ਨਾਲ ਮਿਲਾਏ ਜਾ ਰਹੇ ਹਨ']}};return(c[language]||c.en)[kind]||c.en.passbook}
+
 function listeningUI(active){$('#listening').hidden=!active;$('#stop').hidden=!active;$('#listen').hidden=active;$('#requestListening').hidden=!active;$('#requestStop').hidden=!active;$('#requestVoice').hidden=active||mode!=='voice'}
-function resetIntentActions(){for(const id of ['continueWithdrawal','continueUpload','requestVoice','requestManual'])$('#'+id).hidden=true;$('#withdrawalAmountBlock').hidden=true;$('#requestResult').hidden=true;hideRequestBalance();}
+function resetIntentActions(){if($('#amountConfirmActions'))$('#amountConfirmActions').hidden=true;for(const id of ['continueWithdrawal','continueUpload','requestVoice','requestManual'])$('#'+id).hidden=true;$('#withdrawalAmountBlock').hidden=true;$('#requestResult').hidden=true;hideRequestBalance();}
 async function interpret(text,source='manual',alreadySpoken=false){const clean=text.trim();if(!clean)return;if(source==='voice'){localize();$('#requestTranscript').hidden=true;$('#requestResult').hidden=true;$('#voiceChat').replaceChildren();}const response=await fetch('/api/intent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:clean,language})});const data=await response.json();currentIntent=data.intent;resetIntentActions();let w=words(language);
  let reply=data.intent==='withdrawal'?(data.amount?amountReply(language,data.amount):w.withdraw):(data.intent==='deposit'?'I can prepare a deposit slip. First, choose your passbook and account.':(data.intent==='unsupported'?w.unsupported:(data.intent==='greeting'?w.greeting:w.unclear)));if(source==='voice'){$('#requestResult').hidden=true;$('#requestTranscript').hidden=true;show('requestScreen');$('#requestVoice').hidden=false;$('#requestManual').hidden=false;showVoiceStatus('Speaking…');say(reply,language,startRecognition)}else{$('#requestResult').textContent=reply;$('#requestResult').hidden=false}
  if(data.intent==='withdrawal'){$('#withdrawalAmountBlock').hidden=false;$('#continueWithdrawal').hidden=false;flowStage='amount';detectedAmount=data.amount||'';$('#requestedAmount').value=detectedAmount;if(mode==='voice'&&!imageFile)$('#continueUpload').hidden=false;else $('#continueUpload').hidden=true;}
@@ -126,7 +136,7 @@ function negative(text){return /^(नहीं|नही|ना|गलत|नह
 function localIntent(text){const t=text.toLowerCase();if(/निकाल|निकासी|पैसे बाहर|पैसे निकाल|रकम निकाल|पैसा निकाल|paise nikal|paisa nikal|nikalna hai|withdraw|cash out|take out|withdrawal|پیسے نکال|رقم نکال|ਪੈਸੇ ਕਢ|ਪੈਸੇ ਕਢਵਾ/.test(t))return'withdrawal';if(/जमा|खाते में डाल|पैसे डाल|paise jama|paisa jama|jama kar|deposit|put money in|add money|رقم جمع|پیسے جمع|ਪੈਸੇ ਜਮ੍ਹਾ/.test(t))return'deposit';if(/अकाउंट खोल|खाता खोल|नया खाता|बैलेंस चेक|बैलेंस बत|आधार जोड़|आधार लिंक|पता बदल|मोबाइल नंबर बदल|पैसे ट्रांसफर|मुझे अकाउंट|account open|open account|account opening|new account|check balance|balance inquiry|aadhaar|aadhar|pan card|update address|change address|transfer money|send money|open a bank account|credit card|loan apply|apply for loan|मुझे लोन|लोन चाहिए/.test(t))return'unsupported';return''}
 function amountConfirmation(amount,code){const spoken=amountWords(amount,code);return code==='hi'?`आपने ${spoken} कहा। क्या यह राशि सही है? हाँ या नहीं कहें।`:code==='pa'?`ਤੁਸੀਂ ${spoken} ਕਿਹਾ। ਕੀ ਇਹ ਰਕਮ ਸਹੀ ਹੈ? ਹਾਂ ਜਾਂ ਨਹੀਂ ਕਹੋ।`:code==='ur'?`آپ نے ${spoken} کہا۔ کیا یہ رقم درست ہے؟ ہاں یا نہیں کہیں۔`:`You said ${spoken}. Is that amount correct? Please say yes or no.`}
 async function handleVoice(text,detected=''){
- const spoken=(text||'').trim();if(!spoken){showVoiceStatus(words(language).speechError);return}if(parseLanguagePreferenceCommand(spoken)){const response=languageChangeConfirmation();showVoiceStatus(response);await say(response,['hi','en','pa','ur'].includes(language)?language:'hi',()=>{speechRestartAllowed=true;const q=stagePrompt(speakingLanguage);q?say(q,speakingLanguage,startRecognition):startRecognition()});return}
+ const spoken=(text||'').trim();if($('#amountConfirmActions')&&(affirmative(spoken)||negative(spoken)))$('#amountConfirmActions').hidden=true;if(!spoken){showVoiceStatus(words(language).speechError);return}if(parseLanguagePreferenceCommand(spoken)){const response=languageChangeConfirmation();showVoiceStatus(response);await say(response,['hi','en','pa','ur'].includes(language)?language:'hi',()=>{speechRestartAllowed=true;const q=stagePrompt(speakingLanguage);q?say(q,speakingLanguage,startRecognition):startRecognition()});return}
  const amountOnly=/^(?:(?:₹|rs\.?|rupees?)\s*)?(?:[\d,]+(?:\.\d{1,2})?|five|fifteen|fifty|five thousand|five hundred|two thousand|three thousand|four thousand|six thousand|seven thousand|eight thousand|nine thousand|ten thousand|two crore|one crore|पाँच|पांच|पाँच सौ|पांच सौ|पाँच हजार|पांच हजार|पाँच हज़ार|पांच हज़ार|दो हजार|दो हज़ार|तीन हजार|तीन हज़ार|चार हजार|चार हज़ार|छह हजार|छह हज़ार|सात हजार|सात हज़ार|आठ हजार|आठ हज़ार|नौ हजार|नौ हज़ार|दस हजार|दस हज़ार)(?:\s+(?:rupees?|रुपये?|रुपए|रुपया|हजार|हज़ार|thousand|hundred|crore|crores|करोड़|करोड|ਕਰੋੜ|کروڑ))?[.!\s]*$/i.test(spoken);if(!amountOnly)followSpokenLanguage(spoken);
  $('#requestTranscript').hidden=true;$('#requestResult').hidden=true;$('#voiceChat').replaceChildren();
  if(isGreeting(spoken)){const prompt=speakingLanguage==='hi'?'जी, बताइए। आपको क्या काम करना है?':speakingLanguage==='pa'?'ਜੀ, ਦੱਸੋ। ਤੁਹਾਨੂੰ ਕੀ ਕੰਮ ਹੈ?':speakingLanguage==='ur'?'جی، بتائیے، آپ کو کیا کام ہے؟':'Sure. What would you like help with?';await say(prompt,speakingLanguage,startRecognition);return}
@@ -187,27 +197,50 @@ function cancelAllSpeechAndGeminiAudio(){speechCancelled=true;try{window.speechS
 function queueGeminiAudio(base64){try{const raw=atob(base64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);const pcm=new Int16Array(bytes.buffer),samples=new Float32Array(pcm.length);for(let i=0;i<pcm.length;i++)samples[i]=pcm[i]/32768;const buffer=playbackContext.createBuffer(1,samples.length,24000);buffer.copyToChannel(samples,0);const source=playbackContext.createBufferSource();source.buffer=buffer;source.connect(playbackContext.destination);geminiAudioSources.push(source);source.onended=()=>{geminiAudioSources=geminiAudioSources.filter(x=>x!==source);try{source.disconnect()}catch{}};const now=playbackContext.currentTime;playbackCursor=Math.max(playbackCursor,now+0.03);source.start(playbackCursor);playbackCursor+=buffer.duration}catch(error){console.warn('Could not play Gemini audio',error)}}
 let voiceFallbackStarted=false;
 function showGeminiDiagnostic(reason){
+  // Developer-only diagnostics are opt-in via ?debug=1. Normal kiosk users never see provider names or raw errors.
+  console.warn('[Sahaj diagnostic] Gemini Live unavailable:', reason||'unknown');
+  if(new URLSearchParams(window.location.search).get('debug')!=='1')return;
   let el=document.getElementById('geminiDiagnostic');
-  if(!el){el=document.createElement('p');el.id='geminiDiagnostic';el.style.cssText='font-size:.85rem;opacity:.8;max-width:46rem;margin:.5rem auto;word-break:break-word';const hint=document.getElementById('voiceHint');(hint?.parentNode||document.body).insertBefore(el,hint?hint.nextSibling:null)}
-  el.textContent='Reason: '+(reason||'unknown');el.hidden=false;
-  fetch('/api/gemini/check').then(r=>r.json()).then(d=>{if(d&&d.problem)el.textContent='Reason: '+(reason||'unknown')+' — Diagnosis: '+d.problem;else if(d&&d.ok)el.textContent='Reason: '+(reason||'unknown')+' — Your key and models look valid; see the kiosk terminal for the Gemini Live close code.'}).catch(()=>{});
+  if(!el){el=document.createElement('p');el.id='geminiDiagnostic';el.className='developer-diagnostic';el.setAttribute('role','status');const hint=document.getElementById('voiceHint');(hint?.parentNode||document.body).insertBefore(el,hint?hint.nextSibling:null)}
+  el.textContent='Developer diagnostics · Voice provider fallback active: '+(reason||'unknown');el.hidden=false;
+  fetch('/api/gemini/check').then(r=>r.json()).then(d=>{if(d&&d.problem)el.textContent='Developer diagnostics · Voice provider fallback active · '+d.problem;else if(d&&d.ok)el.textContent='Developer diagnostics · Voice provider fallback active · key/model check passed; see server logs for connection details'}).catch(()=>{});
 }
+function showFatalError(){
+  hideLoading();cancelAllSpeechAndGeminiAudio();try{speechRecognition?.stop()}catch{};
+  document.body.classList.remove('is-listening','greeting-mode');
+  document.querySelectorAll('.screen').forEach(el=>el.hidden=true);
+  const screen=document.getElementById('fatalErrorScreen');if(screen){screen.hidden=false;const copy={en:['An error occurred','Please restart the kiosk and try again.','Restart kiosk'],hi:['कुछ गड़बड़ हो गई','कृपया कियोस्क को फिर से शुरू करके कोशिश करें।','फिर से शुरू करें'],ur:['ایک خرابی پیش آ گئی','براہِ کرم کیوسک دوبارہ شروع کریں اور پھر کوشش کریں۔','دوبارہ شروع کریں'],pa:['ਕੋਈ ਗੜਬੜ ਹੋ ਗਈ','ਕਿਰਪਾ ਕਰਕੇ ਕਿਓਸਕ ਮੁੜ ਚਾਲੂ ਕਰਕੇ ਕੋਸ਼ਿਸ਼ ਕਰੋ।','ਮੁੜ ਚਾਲੂ ਕਰੋ']};const c=copy[language]||copy.en;document.getElementById('fatalErrorTitle').textContent=c[0];document.getElementById('fatalErrorMessage').textContent=c[1];document.getElementById('restartKiosk').textContent=c[2]}
+  document.body.setAttribute('data-fatal-error','true');
+}
+
 function fallbackToBrowserVoice(reason='Gemini voice is unavailable.') {
   if(voiceFallbackStarted || mode!=='voice') return;
   voiceFallbackStarted=true;geminiConnectInProgress=false;geminiSpeaking=false;geminiUserAudioActive=false;
-  hideLoading();cancelAllSpeechAndGeminiAudio();setListeningVisual(false);
+  clearTimeout(greetingWatchdogTimer);hideLoading();cancelAllSpeechAndGeminiAudio();setListeningVisual(false);
   console.warn('[Gemini fallback]',reason);
   try{disconnectRealtimeVoice()}catch(error){console.warn('Gemini cleanup failed',error)}
-  // A Live session may expire while a passbook is being selected or scanned. Never
-  // restart the greeting or browser recognition over the document workflow.
   const documentStep = flowStage==='passbook' || activeScreen==='uploadScreen';
-  const greetingText = ({en:'Hello! How may I help you?',hi:'नमस्ते! मैं आपकी कैसे मदद कर सकती हूँ?',pa:'ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡੀ ਕਿਵੇਂ ਮਦਦ ਕਰ ਸਕਦੀ ਹਾਂ?',ur:'السلام علیکم! میں آپ کی کیا مدد کر سکتی ہوں؟'})[speakingLanguage] || 'Hello! How may I help you?';
-  $('#voiceGreeting').textContent=greetingText;
-  $('#voiceHint').textContent=({en:'Speak your request.',hi:'अपनी बात बताइए।',pa:'ਆਪਣੀ ਗੱਲ ਦੱਸੋ।',ur:'اپنی درخواست بتائیں۔'})[speakingLanguage] || 'Speak your request.';
-  const notice = documentStep ? '' : ({en:'Gemini disconnected. Browser voice fallback is active.',hi:'Gemini का कनेक्शन टूट गया। अब ब्राउज़र की आवाज़ सुविधा इस्तेमाल होगी।',pa:'Gemini ਦਾ ਕਨੈਕਸ਼ਨ ਟੁੱਟ ਗਿਆ। ਹੁਣ ਬ੍ਰਾਊਜ਼ਰ ਦੀ ਆਵਾਜ਼ ਵਰਤੀ ਜਾਵੇਗੀ।',ur:'Gemini کا رابطہ منقطع ہو گیا۔ اب براؤزر کی آواز استعمال ہوگی۔'})[speakingLanguage] || 'Gemini disconnected. Browser voice fallback is active.';
-  showVoiceStatus(notice);
+  // Do not restart the welcome greeting after a mid-flow failure. Preserve the user's
+  // current step and use only the selected spoken language for browser speech.
+  if(documentStep){
+    showVoiceStatus(fixedStatus('choosePassbook'));
+    $('#voiceManual').hidden=false;
+    showGeminiDiagnostic(String(reason||''));
+    return;
+  }
+  showVoiceStatus(fixedStatus('fallback'));
   showGeminiDiagnostic(String(reason||''));
-  if(!documentStep && ['request','amount','amount-confirmed','balance-check'].includes(flowStage)) speakFallbackNoticeThenGreeting('',speakingLanguage);
+  const prompt = flowStage==='hello'
+    ? ({en:'Hello! How may I help you?',hi:'नमस्ते! मैं आपकी कैसे मदद कर सकती हूँ?',pa:'ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡੀ ਕਿਵੇਂ ਮਦਦ ਕਰ ਸਕਦੀ ਹਾਂ?',ur:'السلام علیکم! میں آپ کی کیا مدد کر سکتی ہوں؟'})[speakingLanguage] || 'Hello! How may I help you?'
+    : stagePrompt(speakingLanguage);
+  if(prompt){
+    // Mark the greeting as handled before speaking so the watchdog cannot repeat it.
+    if(flowStage==='hello')flowStage='request';
+    say(prompt,speakingLanguage,()=>{speechRestartAllowed=true;startRecognition()});
+  }else{
+    speechRestartAllowed=true;
+    startRecognition();
+  }
 }
 async function connectRealtimeVoice(stream){
   if(geminiConnectInProgress)return;geminiConnectInProgress=true;
@@ -229,7 +262,7 @@ async function connectRealtimeVoice(stream){
     micSource.connect(micProcessor);const silentGain=micAudioContext.createGain();silentGain.gain.value=0;micProcessor.connect(silentGain);silentGain.connect(micAudioContext.destination);$('#voiceStatus').textContent='';startGreetingWatchdog('\u0928\u092e\u0938\u094d\u0924\u0947! \u092e\u0948\u0902 \u0906\u092a\u0915\u0940 \u0915\u094d\u092f\u093e \u092e\u0926\u0926 \u0915\u0930 \u0938\u0915\u0924\u0940 \u0939\u0942\u0901?|Hello! How may I help you?','bi');geminiSocket.send(JSON.stringify({clientContent:{turns:[{role:'user',parts:[{text:'Immediately greet the customer in a calm bilingual voice: नमस्ते! मैं आपकी क्या मदद कर सकती हूँ? Hello! How may I help you? Then wait for the customer to describe the banking task. Continue listening automatically after the greeting. Understand Hindi written or spoken naturally, English, Romanized Hindi, and mixed Hindi-English. When speaking Hindi, always use Hindi language and Devanagari script; never transliterate Hindi into Latin letters.'}]}],turnComplete:true}}));}
     if(m.serverContent?.interrupted)handleGeminiInterrupted();
     const rawTranscript=(m.inputTranscription?.text||m.serverContent?.inputTranscription?.text||m.serverContent?.inputAudioTranscription?.text||'');if(rawTranscript.trim())queueGeminiUserText(rawTranscript);const spokenByModel=(m.serverContent?.outputTranscription?.text||m.outputTranscription?.text||'');if(spokenByModel){geminiOutText+=spokenByModel;maybeAdvanceFromModel(geminiOutText);if(lastAmountTurn&&spokenNumberValue(geminiOutText))reconcileAmountWithModelSpeech(lastAmountTurn,geminiOutText)}
-    const parts=geminiDropAudio?[]:(m.serverContent?.modelTurn?.parts||[]);if(parts.length){geminiGenerating=true;geminiTurn.modelSpoke=true;lastModelAudioAt=Date.now();clearTimeout(playbackFinishTimer);geminiSpeaking=true;geminiUserAudioActive=false;setListeningVisual(false);$('#listening').hidden=true;$('#requestListening').hidden=true;$('#voiceStatus').textContent='';}for(const part of parts){if(part.inlineData?.mimeType?.startsWith('audio/pcm'))queueGeminiAudio(part.inlineData.data);if(part.text){$('#voiceStatus').textContent=part.text}}
+    const parts=geminiDropAudio?[]:(m.serverContent?.modelTurn?.parts||[]);if(parts.length){geminiGenerating=true;geminiTurn.modelSpoke=true;lastModelAudioAt=Date.now();clearTimeout(playbackFinishTimer);geminiSpeaking=true;geminiUserAudioActive=false;setListeningVisual(false);$('#listening').hidden=true;$('#requestListening').hidden=true;$('#voiceStatus').textContent='';}for(const part of parts){if(part.inlineData?.mimeType?.startsWith('audio/pcm'))queueGeminiAudio(part.inlineData.data);if(part.text){setStatusFromModelText(part.text)}}
     if(m.serverContent?.turnComplete){geminiGenerating=false;geminiDropAudio=false;const modelSaid=geminiOutText,amountTurn=lastAmountTurn;geminiOutText='';geminiTurn.closed=true;maybeAdvanceFromModel(modelSaid);if(amountTurn&&spokenNumberValue(modelSaid)){amountTurn.modelSaid=modelSaid;reconcileAmountWithModelSpeech(amountTurn,modelSaid);setTimeout(()=>reconcileAmountWithModelSpeech(amountTurn,modelSaid),1800)}$('#voiceStatus').textContent='';clearTimeout(playbackFinishTimer);const waitMs=playbackContext?Math.max(0,(playbackCursor-playbackContext.currentTime)*1000)+180:180;playbackFinishTimer=setTimeout(()=>{geminiSpeaking=false;geminiMuteUntil=(Date.now()-geminiBargedInAt>4000)?Date.now()+500:0;geminiUserAudioActive=false;setListeningVisual(false);$('#listening').hidden=true;$('#requestListening').hidden=true;showVoiceStatus('');armSilenceReask()},waitMs)}
     if(m.error)fallbackToBrowserVoice(m.error.message||'Gemini voice connection issue; switching to browser voice.');
   };
@@ -364,10 +397,84 @@ async function processRealtimeTranscript(spoken){
 }
 function disconnectRealtimeVoice(){speechRestartAllowed=false;try{speechRecognition?.stop()}catch{}geminiReady=false;try{geminiSocket?.close()}catch{}try{micProcessor?.disconnect()}catch{}try{micSource?.disconnect()}catch{}try{micAudioContext?.close()}catch{}try{playbackContext?.close()}catch{}realtimeStream?.getTracks().forEach(track=>track.stop());geminiSocket=null;micProcessor=null;micSource=null;micAudioContext=null;playbackContext=null;realtimeStream=null;}
 let speechRecognition=null, speechListening=false, speechRestartAllowed=false, recognitionRetryIndex=0, speechCancelled=false;
+let deepgramAvailable = null;
+let deepgramRecorder = null;
+let deepgramStream = null;
+let deepgramChunks = [];
+let deepgramBusy = false;
+let deepgramStopTimer = null;
+
+async function startDeepgramRecognition(){
+  if(deepgramBusy || mode!=='voice') return;
+  if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
+    deepgramAvailable=false;
+    startBrowserRecognition();
+    return;
+  }
+  deepgramBusy=true;
+  try{
+    if(deepgramAvailable===null){
+      const config=await fetch('/api/speech/config',{cache:'no-store'}).then(r=>r.ok?r.json():({deepgram_available:false}));
+      deepgramAvailable=!!config.deepgram_available;
+    }
+    if(!deepgramAvailable){deepgramBusy=false;startBrowserRecognition();return}
+    deepgramStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    const mimeType=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
+    deepgramRecorder=new MediaRecorder(deepgramStream,mimeType?{mimeType}:undefined);
+    deepgramChunks=[];
+    deepgramRecorder.ondataavailable=e=>{if(e.data?.size)deepgramChunks.push(e.data)};
+    deepgramRecorder.onerror=e=>{
+      console.warn('[Deepgram STT] recorder failed',e.error||e);
+      cleanupDeepgramRecorder();deepgramBusy=false;deepgramAvailable=false;startBrowserRecognition();
+    };
+    deepgramRecorder.onstop=async()=>{
+      clearTimeout(deepgramStopTimer);deepgramStopTimer=null;
+      const recorder=deepgramRecorder;
+      const blob=new Blob(deepgramChunks,{type:recorder?.mimeType||'audio/webm'});
+      cleanupDeepgramRecorder();
+      if(!blob.size){deepgramBusy=false;deepgramAvailable=false;startBrowserRecognition();return}
+      try{
+        showVoiceStatus(fixedStatus('listening'));
+        const form=new FormData();form.append('file',blob,'utterance.webm');
+        const response=await fetch('/api/speech/transcribe',{method:'POST',body:form});
+        if(!response.ok)throw new Error('transcription unavailable ('+response.status+')');
+        const result=await response.json();
+        const transcript=(result.transcript||'').trim();
+        if(!transcript)throw new Error('empty transcript');
+        console.info('[Speech fallback] Deepgram transcript received.');
+        deepgramBusy=false;
+        handleVoice(transcript,detectLanguage(transcript));
+      }catch(error){
+        console.warn('[Deepgram STT fallback]',error);
+        deepgramBusy=false;deepgramAvailable=false;
+        startBrowserRecognition();
+      }
+    };
+    deepgramRecorder.start(250);
+    speechListening=true;listeningUI(true);setListeningVisual(true);showVoiceStatus(fixedStatus('listening'));
+    // One short utterance per request; the workflow restarts recognition after responding.
+    deepgramStopTimer=setTimeout(()=>{try{if(deepgramRecorder?.state==='recording')deepgramRecorder.stop()}catch(e){console.warn('[Deepgram STT] stop failed',e)}},6500);
+  }catch(error){
+    console.warn('[Deepgram STT] microphone/API setup failed',error);
+    cleanupDeepgramRecorder();deepgramBusy=false;deepgramAvailable=false;
+    startBrowserRecognition();
+  }
+}
+function cleanupDeepgramRecorder(){
+  clearTimeout(deepgramStopTimer);deepgramStopTimer=null;
+  try{deepgramStream?.getTracks().forEach(track=>track.stop())}catch{}
+  deepgramStream=null;deepgramRecorder=null;deepgramChunks=[];speechListening=false;setListeningVisual(false);
+}
 function startRecognition(){
   if(geminiActive())return;
+  if(deepgramAvailable!==false){startDeepgramRecognition();return}
+  startBrowserRecognition();
+}
+function startBrowserRecognition(){
+
+  if(geminiActive())return;
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SpeechRecognition){showVoiceStatus('इस ब्राउज़र में आवाज़ पहचान उपलब्ध नहीं है। कृपया Chrome में खोलें या बिना आवाज़ आगे बढ़ें।');$('#voiceManual').hidden=false;return}
+  if(!SpeechRecognition){console.error('[Sahaj fatal] Browser speech recognition is unsupported; Gemini fallback is already unavailable.');showFatalError();return}
   try{
     if(speechRecognition){try{speechRecognition.stop()}catch{}}
     speechRecognition=new SpeechRecognition();
@@ -376,12 +483,12 @@ function startRecognition(){
     speechRecognition.interimResults=true;
     speechRecognition.maxAlternatives=3;
     speechRestartAllowed=true;
-    speechRecognition.onstart=()=>{speechListening=true;listeningUI(true);setListeningVisual(true);showVoiceStatus(speakingLanguage==='hi'?'सुन रही हूँ…':speakingLanguage==='pa'?'ਸੁਣ ਰਹੀ ਹਾਂ…':speakingLanguage==='ur'?'سن رہی ہوں…':'Listening…')};
+    speechRecognition.onstart=()=>{speechListening=true;listeningUI(true);setListeningVisual(true);showVoiceStatus(fixedStatus('listening'))};
     speechRecognition.onresult=event=>{const result=event.results?.[event.results.length-1];if(!result||result.isFinal===false)return;const alternatives=Array.from(result).map(x=>(x.transcript||'').trim()).filter(Boolean);const transcript=alternatives.sort((a,b)=>{const score=t=>(/^(yes|yeah|yep|haan|han|हाँ|हां|जी|no|nope|nahi|नहीं|नही|ना|ਹਾਂ|ਨਹੀਂ|ہاں|نہیں)$/i.test(t)?8:0)+(localIntent(t)?6:0)+(spokenNumberValue(t)?4:0)+(/[ऀ-ॿ]/.test(t)?2:0)+(t.length>2?1:0);return score(b)-score(a)})[0]||'';if(transcript){speechRestartAllowed=false;handleVoice(transcript,detectLanguage(transcript));}};
-    speechRecognition.onerror=event=>{speechListening=false;setListeningVisual(false);console.warn('Browser speech recognition:',event.error);$('#listening').hidden=true;if(event.error==='not-allowed'||event.error==='service-not-allowed'){speechRestartAllowed=false;showVoiceStatus('आवाज़ पहचान की अनुमति नहीं मिली। Brave में यह सेवा उपलब्ध न हो सकती है। Google Chrome में यह kiosk खोलकर फिर कोशिश करें।');$('#voiceManual').hidden=false}else if(event.error==='no-speech'){showVoiceStatus(language==='hi'?'आवाज़ साफ़ नहीं सुनाई दी। कृपया सामान्य आवाज़ में फिर से बोलें।':language==='pa'?'ਆਵਾਜ਼ ਸਾਫ਼ ਨਹੀਂ ਸੁਣੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਬੋਲੋ।':language==='ur'?'آواز صاف سنائی نہیں دی۔ براہِ کرم دوبارہ بولیں۔':'I could not hear that clearly. Please speak normally and try again.');}else if(event.error==='network'){speechRestartAllowed=false;showVoiceStatus('ब्राउज़र की speech recognition सेवा से कनेक्शन नहीं हुआ। Google Chrome में कोशिश करें या बिना आवाज़ जारी रखें।');$('#voiceManual').hidden=false}else{showVoiceStatus('Speech recognition error: '+event.error+'. Google Chrome में कोशिश करें।')}};
+    speechRecognition.onerror=event=>{speechListening=false;setListeningVisual(false);console.warn('[Sahaj browser speech recognition]',event.error);$('#listening').hidden=true;if(event.error==='no-speech'){showVoiceStatus(language==='hi'?'आवाज़ साफ़ नहीं सुनाई दी। कृपया सामान्य आवाज़ में फिर से बोलें।':language==='pa'?'ਆਵਾਜ਼ ਸਾਫ਼ ਨਹੀਂ ਸੁਣੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਬੋਲੋ।':language==='ur'?'آواز صاف سنائی نہیں دی۔ براہِ کرم دوبارہ بولیں۔':'I could not hear that clearly. Please speak normally and try again.');return}speechRestartAllowed=false;if(event.error==='not-allowed'||event.error==='service-not-allowed'||event.error==='network'||event.error==='audio-capture'){showFatalError()}else{showFatalError()}};
     speechRecognition.onend=()=>{speechListening=false;setListeningVisual(false);if(speechRestartAllowed&&mode==='voice'&&!document.hidden){setTimeout(()=>{if(speechRestartAllowed&&mode==='voice'){try{speechRecognition.start()}catch(e){console.debug('Recognition restart:',e.message);setListeningVisual(false)} }},250)}else{$('#listening').hidden=true}};
     speechRecognition.start();
-  }catch(error){showVoiceStatus('Could not start browser speech recognition: '+error.message);$('#voiceManual').hidden=false}
+  }catch(error){console.error('[Sahaj browser recognition start failed]',error);showFatalError()}
 }
 function getVoicesWhenReady(){
   return new Promise(resolve=>{
@@ -430,7 +537,7 @@ async function askMicrophone(){
   $('#voiceHint').innerHTML='मैं आपकी क्या मदद कर सकती हूँ?<br>How may I help you?';
   const geminiLoading=loadingCopy('gemini');showLoading(geminiLoading[0],geminiLoading[1]);setListeningVisual(false);$('#voiceStatus').textContent='';$('#listen').hidden=true;$('#stop').hidden=true;$('#listening').hidden=true;
   try{await connectRealtimeVoice(stream)}catch(error){fallbackToBrowserVoice('Gemini could not start: '+error.message)}
- }catch(error){$('#permissionStatus').textContent='Could not access microphone: '+error.message+' You can retry or continue without voice.';$('#fallbackActions').hidden=false;show('permissionScreen')}
+ }catch(error){console.warn('[Sahaj microphone permission]',error);$('#permissionStatus').textContent=language==='hi'?'माइक्रोफ़ोन उपलब्ध नहीं है। अनुमति जाँचें और फिर कोशिश करें।':language==='ur'?'مائیکروفون دستیاب نہیں۔ اجازت چیک کریں اور دوبارہ کوشش کریں۔':language==='pa'?'ਮਾਈਕ੍ਰੋਫ਼ੋਨ ਉਪਲਬਧ ਨਹੀਂ। ਇਜਾਜ਼ਤ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।':'Microphone access is unavailable. Check permission and try again.';$('#fallbackActions').hidden=false;show('permissionScreen')}
 }
 function showManualUpload(){mode='manual';localize();show('uploadScreen')}
 function chooseManualLanguage(returnScreen='uploadScreen'){mode='manual';languageReturnScreen=returnScreen;$('#fallbackActions').hidden=true;$('#permissionStatus').textContent='';show('languageScreen');document.querySelectorAll('[data-lang]').forEach(x=>x.classList.toggle('selected',x.dataset.lang===language));try{localize()}catch(error){console.error('Manual language screen localization failed:',error);$('#languageTitle').textContent='Choose your language';$('#languageDescription').textContent='Choose a language for manual help.';$('#languageNext').textContent='Continue'}}
@@ -663,7 +770,9 @@ async function detectMicPermission(){
 
 
 // ---- Yellow amount box: always in the SCREEN language (never the spoken one) ----
-function showAmountBox(amount){const box=$('#requestResult');if(!box)return;renderAmountBox(box,amount);box.hidden=false}
+function showAmountBox(amount){const box=$('#requestResult');if(!box)return;renderAmountBox(box,amount);box.hidden=false;const actions=$('#amountConfirmActions');if(actions)actions.hidden=!(mode==='voice'&&flowStage==='amount-confirmed')}
+$('#amountConfirmYes').onclick=()=>{if(flowStage==='amount-confirmed')handleVoice('yes')};
+$('#amountConfirmNo').onclick=()=>{if(flowStage==='amount-confirmed')handleVoice('no')};
 function refreshAmountBox(){if(flowStage==='amount-confirmed'&&detectedAmount&&activeScreen==='requestScreen'){const box=$('#requestResult');if(box&&!box.hidden)renderAmountBox(box,detectedAmount)}}
 // ---- End of flow: first ask for the signature (before download), only afterwards send the customer to the counter ----
 const SIGN_PROMPT={en:'Your form is ready. Please sign inside the highlighted box on the form. It will download in a few seconds.',hi:'आपका फ़ॉर्म तैयार है। कृपया फ़ॉर्म में हाइलाइट किए गए बॉक्स में हस्ताक्षर करें। यह कुछ सेकंड में डाउनलोड होगा।',pa:'ਤੁਹਾਡਾ ਫਾਰਮ ਤਿਆਰ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਫਾਰਮ ਵਿੱਚ ਹਾਈਲਾਈਟ ਕੀਤੇ ਬਾਕਸ ਵਿੱਚ ਦਸਤਖ਼ਤ ਕਰੋ। ਇਹ ਕੁਝ ਸਕਿੰਟਾਂ ਵਿੱਚ ਡਾਊਨਲੋਡ ਹੋਵੇਗਾ।',ur:'آپ کا فارم تیار ہے۔ براہِ کرم فارم میں نمایاں کیے گئے خانے میں دستخط کریں۔ یہ چند سیکنڈ میں ڈاؤن لوڈ ہوگا۔'};
@@ -737,7 +846,8 @@ function showBalanceBox(balance){const c=['en','hi','pa','ur'].includes(language
 function halfNumberValue(text){const t=(text||'').toLowerCase();const unit=/(lakhs?|lacs?|\u0932\u093e\u0916|thousand|hazaar|hazar|\u0939\u091c\u093e\u0930|\u0939\u095b\u093e\u0930)/;const m=t.match(new RegExp('(\u0921\u0947\u0922\u093c?|dedh|one and a half|1\\.5|\u0922\u093e\u0908|dhai|two and a half|2\\.5)\\s*'+unit.source));if(!m)return'';const big=/lakh|lac|\u0932\u093e\u0916/.test(m[2]);const one=/\u0921\u0947\u0922|dedh|one and a half|1\.5/.test(m[1]);return String((one?1.5:2.5)*(big?100000:1000))}
 // If Gemini never produces audio after a (re)start greeting, speak it with the browser voice so the screen never just sits on "Namaste".
 function browserSpeak(text,lang){try{if(!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(text);u.lang=lang;window.speechSynthesis.speak(u)}catch{}}
-function startGreetingWatchdog(text,code){const t0=Date.now();bargeInBlockedUntil=t0+9000;setTimeout(()=>{if(lastModelAudioAt>=t0||mode!=='voice'||flowStage!=='hello')return;if(code==='bi'){const[h,e]=text.split('|');browserSpeak(h,'hi-IN');browserSpeak(e,'en-IN')}else browserSpeak(text,synthLocale(code))},7000)}
+let greetingWatchdogTimer=null;
+function startGreetingWatchdog(text,code){const t0=Date.now();bargeInBlockedUntil=t0+9000;clearTimeout(greetingWatchdogTimer);greetingWatchdogTimer=setTimeout(()=>{if(lastModelAudioAt>=t0||mode!=='voice'||flowStage!=='hello'||voiceFallbackStarted)return;const greeting=code==='bi'?text.split('|')[0]:text;browserSpeak(greeting,synthLocale(speakingLanguage))},7000)}
 
 let bargeInBlockedUntil=0;
 function balanceSpeech(code){const c=['en','hi','pa','ur'].includes(code)?code:'hi';return{
@@ -784,3 +894,5 @@ function armSilenceReask(){
     const text=silencePrompt(stage,c);if(text)say(text,c);
   },5000);
 }
+
+$('#restartKiosk')?.addEventListener('click',()=>window.location.reload());

@@ -66,3 +66,11 @@ body.is-listening #stop{background:rgba(255,255,255,.15);color:#fff;border-color
 
 #requestBalance p{margin:0 0 10px}
 #requestBalanceBig .big-amount{margin:0}
+
+/* Generic user-facing failure screen; provider errors remain in logs, not on the kiosk. */
+.fatal-error-screen{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#b4232f!important;color:#fff!important;border:4px solid #7f1720!important;box-shadow:0 16px 48px rgba(100,0,0,.24)!important}
+.fatal-error-screen[hidden]{display:none!important}
+.fatal-error-screen h1,.fatal-error-screen p{color:#fff!important}
+.fatal-error-symbol{width:76px;height:76px;display:grid;place-items:center;border:4px solid #fff;border-radius:50%;font-size:52px;font-weight:900;margin-bottom:12px}
+.fatal-error-screen button{background:#fff!important;color:#8f1722!important;border-color:#fff!important}
+.developer-diagnostic{font-size:11px!important;line-height:1.35!important;opacity:.7!important;color:#7a2630!important;max-width:46rem;margin:4px auto!important;overflow-wrap:anywhere;text-align:center}

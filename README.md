@@ -116,3 +116,12 @@ The voice screen asks for microphone permission, speaks the initial Hindi and En
 - The Gemini-failure status and greeting hint use the selected language instead of a Hindi/English mixed greeting. Browser recognition still depends on browser support; Brave may not provide reliable Web Speech recognition in every configuration. Test in Chrome as a comparison.
 - The final counter instruction is spoken locally from the exact translated string rather than asking Gemini to generate it, preventing a response that says only a number.
 - OCR remains in place: the deployed host needs Tesseract/Windows OCR or a configured Gemini API key for the vision fallback. QR lookup is not enabled because existing passbooks cannot be assumed to contain a bank-supported QR code.
+
+
+## Render native deployment: OCR and speech fallback (v25)
+
+- Add `DEEPGRAM_API_KEY` in Render → Environment to enable Deepgram transcription fallback. Keep `GEMINI_API_KEY` for Gemini Live and Gemini Vision.
+- `apt.txt` installs `tesseract-ocr` and the English language pack on Render's native Python build. This project does not require Docker for this path. Verify the deployment logs show the apt packages installed and that `/usr/bin/tesseract --version` works in the runtime.
+- The app tries local Tesseract OCR first when installed. This keeps passbook reading independent of Gemini outages. If local OCR cannot confidently read a labelled account number, it tries Gemini Vision. If Gemini Vision fails, it retains the local OCR text for manual correction.
+- Voice fallback order is Gemini Live → Deepgram transcription → browser Web Speech API. Deepgram only transcribes audio; the existing deterministic `handleVoice` workflow interprets the transcript and generates the kiosk's next prompt. Browser `speechSynthesis` speaks responses. Deepgram is a short-utterance recorder and requires microphone permission plus HTTPS.
+- Do not commit API keys. Add them only in Render environment settings.

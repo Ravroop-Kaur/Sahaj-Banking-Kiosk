@@ -9,3 +9,4 @@ pytest
 python-dotenv
 
 websockets==13.1
+\n# pytesseract calls the system Tesseract executable installed via apt.txt on Render.\n
