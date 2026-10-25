@@ -5,7 +5,6 @@ from pathlib import Path
 import os
 import re
 import tempfile
-import time
 import sys
 import json
 import shutil
@@ -15,6 +14,7 @@ from io import BytesIO
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from dotenv import load_dotenv
 from fastapi.responses import HTMLResponse, Response
+from starlette.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from urllib import error as urlerror, request as urlrequest
@@ -183,7 +183,14 @@ async def gemini_live_proxy(client: WebSocket):
             payload["setup"]["model"] = "models/" + model
             conn = None
             try:
-                conn = await connect(url, max_size=12 * 1024 * 1024, open_timeout=15)
+                conn = await connect(
+                    url,
+                    max_size=12 * 1024 * 1024,
+                    open_timeout=15,
+                    ping_interval=20,
+                    ping_timeout=20,
+                    close_timeout=10,
+                )
                 await conn.send(json.dumps(payload, ensure_ascii=False))
                 print(f"[Gemini Live] Starting setup with model {model}", flush=True)
                 reply = await asyncio.wait_for(conn.recv(), timeout=20)
@@ -239,7 +246,11 @@ async def gemini_live_proxy(client: WebSocket):
         done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
             task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
         for task in done:
+            if task.cancelled():
+                continue
             exc = task.exception()
             if exc and not isinstance(exc, WebSocketDisconnect):
                 raise exc
@@ -318,63 +329,12 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
             raise RuntimeError("Windows local image preprocessing produced no OCR variants.")
         return paths
 
-_GEMINI_VISION_MODEL = {"name": ""}
-
-# Named models are tried first, in this order. "-latest" aliases are the last resort.
-# Override with GEMINI_OCR_MODELS="model-a,model-b" (comma separated) in the Render environment.
-GEMINI_OCR_DEFAULT_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-3.1-flash",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-]
-# Retired models (Google returns 404 "no longer available to new users"). Never tried, and any model
-# that returns 404 at runtime is added here until the server restarts.
-GEMINI_OCR_RETIRED = {"gemini-2.0-flash", "gemini-2.0-flash-001", "gemini-2.0-flash-lite", "gemini-1.5-flash", "gemini-1.5-flash-8b"}
-GEMINI_OCR_LAST_RESORT = ["gemini-flash-latest"]
-
-def _gemini_vision_candidates(api_key: str) -> list[str]:
-    """Order: GEMINI_OCR_MODEL, last model that worked, named models, any other flash model this key can use, then flash-latest."""
-    names = []
-    configured = os.getenv("GEMINI_OCR_MODEL", "").strip()
-    if configured:
-        names.append(configured)
-    if _GEMINI_VISION_MODEL["name"]:
-        names.append(_GEMINI_VISION_MODEL["name"])
-    env_list = [m.strip() for m in os.getenv("GEMINI_OCR_MODELS", "").split(",") if m.strip()]
-    names.extend(env_list or GEMINI_OCR_DEFAULT_MODELS)
-    try:
-        req = urlrequest.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", headers={"x-goog-api-key": api_key})
-        with urlrequest.urlopen(req, timeout=20) as resp:
-            listing = json.loads(resp.read().decode("utf-8"))
-        available = set()
-        found = []
-        for item in listing.get("models", []):
-            name = str(item.get("name", "")).replace("models/", "")
-            if "generateContent" not in (item.get("supportedGenerationMethods") or []):
-                continue
-            available.add(name)
-            if any(bad in name for bad in ("live", "tts", "image", "embed", "audio", "native", "robotics", "computer", "thinking", "lite", "gemma", "learnlm", "aqa", "veo", "imagen", "latest")):
-                continue
-            if "flash" in name:
-                found.append(name)
-        found.sort(key=lambda n: (("preview" in n or "exp" in n), [-int(x) if x.isdigit() else 0 for x in re.findall(r"\d+", n)]))
-        # Skip named models this key cannot call (saves a wasted request each), then add other flash models.
-        if available:
-            names = [n for n in names if n in available or n == configured]
-        names.extend(found)
-    except Exception as exc:
-        print("GEMINI MODEL LIST ERROR:", repr(exc), flush=True)
-    names.extend(GEMINI_OCR_LAST_RESORT)
-    return [n for n in dict.fromkeys(names) if n not in GEMINI_OCR_RETIRED]
-
-
 def _gemini_read_passbook(folder: Path) -> str:
     """Transcribe the passbook text with Gemini vision so the normal account-number parsing can run on it."""
     import base64
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
-        raise RuntimeError("No OCR engine is installed on this server and GEMINI_API_KEY is not set. Set GEMINI_API_KEY (or install Tesseract) and restart.")
+        raise RuntimeError("Passbook reading is not configured on this server: no Tesseract OCR is installed and GEMINI_API_KEY is not set in the host's environment variables. Add GEMINI_API_KEY (the .env file is not deployed) or deploy with the included Dockerfile, which installs Tesseract.")
     original = folder / "original.jpg"
     if original.exists():
         image_bytes, mime = original.read_bytes(), "image/jpeg"
@@ -383,55 +343,45 @@ def _gemini_read_passbook(folder: Path) -> str:
         if not paths:
             raise RuntimeError("No image was available to read.")
         image_bytes, mime = paths[0].read_bytes(), "image/png"
+    models = []
+    for name in [os.getenv("GEMINI_OCR_MODEL", "").strip(), "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"]:
+        if name and name not in models:
+            models.append(name)
     payload = {
         "contents": [{"role": "user", "parts": [
-            {"text": "This is a photo of a synthetic demo bank passbook. It may be rotated. Transcribe ALL printed text exactly as written, line by line, keeping labels such as 'Account Number' next to their values. Output plain text only."},
+            {"text": "This is a photo of a synthetic demo bank passbook. It may be rotated, upside down or slightly blurred. Transcribe ALL printed text exactly as written, line by line, keeping labels such as 'Account Number' next to their values. Output plain text only."},
             {"inlineData": {"mimeType": mime, "data": base64.b64encode(image_bytes).decode("ascii")}}]}],
         "generationConfig": {"temperature": 0},
     }
-    body = json.dumps(payload).encode("utf-8")
-    last_error = "no model tried"
-    tried = 0
-    for model in _gemini_vision_candidates(api_key):
-        if tried >= 8:
-            break
-        tried += 1
+    failures = []
+    for model in models:
         endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        req = urlrequest.Request(endpoint, data=body, headers={"Content-Type": "application/json", "x-goog-api-key": api_key}, method="POST")
-        data = None
-        for attempt in range(3):
+        req = urlrequest.Request(endpoint, data=json.dumps(payload).encode("utf-8"),
+                                 headers={"Content-Type": "application/json", "x-goog-api-key": api_key}, method="POST")
+        try:
+            with urlrequest.urlopen(req, timeout=40) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urlerror.HTTPError as exc:
+            detail = ""
             try:
-                with urlrequest.urlopen(req, timeout=40) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                break
-            except urlerror.HTTPError as exc:
-                detail = ""
-                try:
-                    detail = exc.read().decode("utf-8", "replace")[:200]
-                except Exception:
-                    pass
-                last_error = f"{model}: HTTP {exc.code} {detail}"
-                print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
-                if exc.code == 404:
-                    GEMINI_OCR_RETIRED.add(model)  # model gone for this key: do not try it again
-                    break
-                if exc.code in (429, 500, 502, 503, 504) and attempt < 2:
-                    time.sleep(1.5 * (attempt + 1))  # transient overload: retry same model
-                    continue
-                break
-            except (urlerror.URLError, TimeoutError, ValueError) as exc:
-                last_error = f"{model}: {exc}"
-                print("GEMINI OCR MODEL FAILED:", last_error, flush=True)
-                break
-        if data is None:
+                detail = (json.loads(exc.read().decode("utf-8")).get("error") or {}).get("message", "")
+            except Exception:
+                pass
+            failures.append(f"{model}: HTTP {exc.code} {detail[:160]}".replace(api_key, "***"))
+            if exc.code in (400, 401, 403) and "model" not in detail.lower():
+                break  # bad/blocked key: other models will fail the same way
+            continue
+        except (urlerror.URLError, TimeoutError, ValueError) as exc:
+            failures.append(f"{model}: {type(exc).__name__} {exc}".replace(api_key, "***"))
             continue
         parts = (((data.get("candidates") or [{}])[0].get("content") or {}).get("parts")) or []
         text = "\n".join(part.get("text", "") for part in parts)
         if text.strip():
-            _GEMINI_VISION_MODEL["name"] = model
             return text
-        last_error = f"{model}: empty answer"
-    raise RuntimeError(f"Could not read the passbook with Gemini ({last_error})")
+        failures.append(f"{model}: empty response")
+    print("[Passbook OCR] Gemini failed: " + " | ".join(failures), flush=True)
+    raise RuntimeError("Could not read the passbook with Gemini (" + "; ".join(failures[:2]) + ")")
+
 
 def _recognize_local_variants(folder: Path) -> tuple[str, str]:
     """Run fast local OCR first on upright variants; broaden only if account number is not found."""
@@ -488,10 +438,17 @@ async def ocr_passbook(file: UploadFile = File(...)):
     if not raw:
         raise HTTPException(400, "The uploaded image is empty.")
     try:
-        with tempfile.TemporaryDirectory(prefix="kiosk-ocr-") as work:
-            folder = Path(work)
-            variants = _prepare_ocr_variants(raw, folder, file.filename or ".jpg")
-            text, engine = _recognize_local_variants(folder)
+        # Image transforms, Tesseract subprocesses, and Gemini Vision's urllib request
+        # are blocking. Run them off the asyncio event loop so active Gemini Live
+        # WebSockets can continue servicing ping/pong traffic while OCR is running.
+        def run_passbook_ocr() -> tuple[str, str, int]:
+            with tempfile.TemporaryDirectory(prefix="kiosk-ocr-") as work:
+                folder = Path(work)
+                variants = _prepare_ocr_variants(raw, folder, file.filename or ".jpg")
+                text, engine = _recognize_local_variants(folder)
+                return text, engine, len(variants)
+
+        text, engine, variant_count = await run_in_threadpool(run_passbook_ocr)
         flat_text = re.sub(r"\s+", " ", text).strip()
         account_match = re.search(r"\b(?:account|a\s*/\s*c)\s*(?:no\.?|number|#|id)\b(.*?)(?=\b(?:customer\s*name|s\s*/\s*d\s*/\s*w\s*/\s*h|address|phone|branch|date|email)\b|$)", flat_text, re.I)
         account_groups = re.findall(r"(?<!\d)\d{8,18}(?!\d)", account_match.group(1)) if account_match else []
@@ -518,24 +475,20 @@ async def ocr_passbook(file: UploadFile = File(...)):
         # Deliberately expose only the account number. All other customer/account fields
         # must be fetched from SQLite after the user confirms this exact key.
         if account_id:
-            notice = "Account number extracted locally. Confirm the digits; all other details will come from the matching SQLite demo record."
+            notice = f"Account number extracted ({engine}). Confirm the digits; all other details will come from the matching SQLite demo record."
         else:
             notice = "No account number could be read confidently. Try a clearer photo or type the number manually. No other details were extracted for lookup."
         return {"engine": engine, "fields": {
             "account_id": {"value": account_id, "confidence": "review" if account_id else "uncertain"}},
-            "quality": {"attempts": len(variants), "orientations": [0, 90, 180, 270], "local_only": True}, "notice": notice}
+            "quality": {"attempts": variant_count, "orientations": [0, 90, 180, 270], "local_only": engine != "Gemini vision"}, "notice": notice}
     except HTTPException:
         raise
     except Exception as exc:
-        import traceback
-        print("PASSBOOK OCR ERROR:", repr(exc), flush=True)
-        traceback.print_exc()
-        return {"engine": "local OCR unavailable", "text": "", "fields": {
-            "name": {"value": "", "confidence": "unavailable"},
-            "account_id": {"value": "", "confidence": "unavailable"},
-            "branch": {"value": "", "confidence": "unavailable"}},
-            "quality": {"attempts": 0, "local_only": True},
-            "notice": f"Passbook could not be read: {type(exc).__name__}: {str(exc)[:300]}"}
+        print(f"[Passbook OCR] failed: {type(exc).__name__}: {exc}", flush=True)
+        return {"engine": "OCR unavailable", "text": "", "fields": {
+            "account_id": {"value": "", "confidence": "unavailable"}},
+            "quality": {"attempts": 0, "local_only": False},
+            "notice": f"Could not read the passbook: {exc}" if isinstance(exc, RuntimeError) else f"Could not process this image ({type(exc).__name__}). Type the account number manually."}
 
 def _intent_from_model(text: str, language: str) -> dict | None:
     """Use Gemini for flexible Hindi/English intent parsing.
