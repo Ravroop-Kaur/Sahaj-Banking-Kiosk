@@ -438,12 +438,15 @@ async def ocr_passbook(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as exc:
+        import traceback
+        print("PASSBOOK OCR ERROR:", repr(exc), flush=True)
+        traceback.print_exc()
         return {"engine": "local OCR unavailable", "text": "", "fields": {
             "name": {"value": "", "confidence": "unavailable"},
             "account_id": {"value": "", "confidence": "unavailable"},
             "branch": {"value": "", "confidence": "unavailable"}},
             "quality": {"attempts": 0, "local_only": True},
-            "notice": f"Local OCR could not process this image ({type(exc).__name__}). Confirm details manually; no image was sent externally."}
+            "notice": f"Passbook could not be read: {type(exc).__name__}: {str(exc)[:300]}"}
 
 def _intent_from_model(text: str, language: str) -> dict | None:
     """Use Gemini for flexible Hindi/English intent parsing.
