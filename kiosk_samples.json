@@ -1,0 +1,22 @@
+{
+  "passbook": {
+    "path": "static/synthetic_documents/passbook_challenges/01-clear-front.png",
+    "account_id": "990000000001"
+  },
+  "identity": {
+    "path": "static/kiosk/identity.png",
+    "fields": {
+      "name": "Asha Demo",
+      "dob": "1995-04-12",
+      "address": "12 Fictional Lane, Demo Town"
+    }
+  },
+  "pan": {
+    "path": "static/kiosk/pan.png",
+    "fields": {
+      "name": "Asha Demo",
+      "dob": "1995-04-12",
+      "address": "12 Fictional Lane, Demo Town"
+    }
+  }
+}

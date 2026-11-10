@@ -1,0 +1,77 @@
+{
+  "source_archive": "Sahaj-competition-ready.zip",
+  "changes": [
+    {
+      "path": ".env.example",
+      "change": "modified"
+    },
+    {
+      "path": ".gitignore",
+      "change": "modified"
+    },
+    {
+      "path": "docs/ORIGINAL_README.md",
+      "change": "added"
+    },
+    {
+      "path": "docs/ORIGINAL_SUBMISSION_GUIDE.md",
+      "change": "added"
+    },
+    {
+      "path": "docs/screenshots/desktop.jpg",
+      "change": "added"
+    },
+    {
+      "path": "docs/screenshots/mobile.jpg",
+      "change": "added"
+    },
+    {
+      "path": "README.md",
+      "change": "modified"
+    },
+    {
+      "path": "REVIEW_NOTES.md",
+      "change": "added"
+    },
+    {
+      "path": "run_kiosk.py",
+      "change": "added"
+    },
+    {
+      "path": "START_KIOSK.bat",
+      "change": "modified"
+    },
+    {
+      "path": "static/app.js",
+      "change": "modified"
+    },
+    {
+      "path": "static/experience.css",
+      "change": "added"
+    },
+    {
+      "path": "static/experience.js",
+      "change": "added"
+    },
+    {
+      "path": "static/index.html",
+      "change": "modified"
+    },
+    {
+      "path": "static/server-stt.js",
+      "change": "modified"
+    },
+    {
+      "path": "SUBMISSION_GUIDE.md",
+      "change": "modified"
+    },
+    {
+      "path": "test_main.py",
+      "change": "modified"
+    },
+    {
+      "path": "tests/test_frontend_regressions.py",
+      "change": "added"
+    }
+  ]
+}

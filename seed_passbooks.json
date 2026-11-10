@@ -1,0 +1,53 @@
+[
+  {
+    "customer_id": 1,
+    "customer_ref": "SYN-CUST-001",
+    "name": "Aarav Demo",
+    "phone": "0000000001",
+    "address": "Demo Street 1, Example City",
+    "dob": "1990-01-10",
+    "occupation": "Synthetic artisan",
+    "account": "990000000001",
+    "type": "Regular Savings",
+    "branch": "Synthetic Demo Branch North",
+    "ifsc": "SYNB0000001",
+    "cif": "SYN-CIF-0001",
+    "balance_paise": 1250500,
+    "demo_id": "DEMO-ID-0001",
+    "demo_pan": "DEMO-PAN-0001"
+  },
+  {
+    "customer_id": 2,
+    "customer_ref": "SYN-CUST-002",
+    "name": "Naina Sample",
+    "phone": "0000000002",
+    "address": "Sample Avenue 2, Example City",
+    "dob": "1985-05-22",
+    "occupation": "Synthetic teacher",
+    "account": "990000000002",
+    "type": "Pension Savings",
+    "branch": "Synthetic Demo Branch Central",
+    "ifsc": "SYNB0000002",
+    "cif": "SYN-CIF-0002",
+    "balance_paise": 3075000,
+    "demo_id": "DEMO-ID-0002",
+    "demo_pan": "DEMO-PAN-0002"
+  },
+  {
+    "customer_id": 3,
+    "customer_ref": "SYN-CUST-003",
+    "name": "Kabir Test",
+    "phone": "0000000003",
+    "address": "Test Road 3, Example City",
+    "dob": "1978-11-03",
+    "occupation": "Synthetic farmer",
+    "account": "990000000003",
+    "type": "Current Savings",
+    "branch": "Synthetic Demo Branch South",
+    "ifsc": "SYNB0000003",
+    "cif": "SYN-CIF-0003",
+    "balance_paise": 892000,
+    "demo_id": "DEMO-ID-0003",
+    "demo_pan": "DEMO-PAN-0003"
+  }
+]
