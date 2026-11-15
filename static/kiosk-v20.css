@@ -1,0 +1,53 @@
+#processingHint{width:26px!important;height:26px!important;box-sizing:border-box;padding:0!important;background:transparent!important;border:3px solid #ffffff70;border-top-color:#52615b99;border-radius:50%;box-shadow:none!important;font-size:0!important;animation:subtleSpin .9s linear infinite}
+@keyframes subtleSpin{to{transform:translateX(-50%) rotate(360deg)}}
+body:has(#loadingOverlay:not([hidden])) #processingHint{display:none!important}
+#voiceStatus,#requestStatus,#simpleOpeningStatus:empty{display:none!important}
+#simpleOpeningConsent,.v16-consent{display:none!important}
+#v11WithdrawalSignHotspot,.v11-sign-hotspot,#sampleSignatureCue,#signatureCue{display:none!important}
+#kioskCurrentLanguage{font-size:12px}
+
+.v11-hotspot{display:none!important}
+
+#workspace #openingScreen:not([hidden]){display:flex!important;flex-direction:column;align-items:stretch;justify-content:flex-start!important;height:auto!important;gap:12px!important;overflow:visible!important}
+#workspace #openingScreen .v16-opening-step:not([hidden]){position:static!important;display:flex!important;flex-direction:column;align-items:center;gap:12px;height:auto!important;flex:none!important}
+#workspace #openingScreen :is(#simpleOpeningPrepare,#simpleOpeningBack,#simpleOpeningStatus,#simpleOpeningDownload){position:static!important;transform:none!important;margin:6px auto!important}
+#workspace #openingScreen #simpleOpeningReviewStep .check{display:flex;align-items:center;gap:.7rem;line-height:1.45}
+#workspace :is(#v9PreviewScreen,#v16DepositPreviewScreen):not([hidden]){height:100%!important;overflow-y:auto!important;display:block!important}
+#workspace :is(#v9PdfHost,#v16DepositPdfHost,.v16-deposit-columns,.v16-deposit-paper,.v9-preview-columns){height:auto!important;max-height:none!important;overflow:visible!important}
+#workspace :is(#withdrawalPdfPreview,#samplePdfPreview):not([hidden]){width:100%!important;height:clamp(350px,63vh,760px)!important;max-height:none!important}
+
+#workspace #openingScreen:not([hidden]){align-items:flex-start!important;text-align:left!important}
+#workspace #openingScreen .v16-opening-step:not([hidden]){width:100%!important;box-sizing:border-box;max-width:none!important;margin-inline:0!important;align-items:flex-start!important;text-align:left!important}
+#workspace #openingScreen .v16-opening-step :is(h2,p,label,input,.v8-choice-grid,.v16-answer-row){text-align:left!important;margin-inline:0!important;align-self:flex-start!important}
+#workspace #openingScreen .v8-choice-grid{width:100%!important}
+#workspace #openingScreen .v8-choice{align-items:flex-start!important;text-align:left!important}
+#workspace #openingScreen :is(#simpleOpeningBack,#simpleOpeningPrepare,#v16OccupationNext,#simpleOpeningDownload,#simpleOpeningStatus){align-self:flex-start!important;margin-inline:0!important}
+
+.app-header .header-tools{display:flex!important;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.app-header #aboutDemo,.app-header #largeText{display:inline-flex!important;align-items:center;justify-content:center;min-height:40px}
+.app-header #kioskLanguageControl{position:relative!important;inset:auto!important}
+.app-header #kioskLanguagePanel{position:absolute;right:0;top:100%;width:min(320px,88vw);box-sizing:border-box}
+@media(max-width:700px){.app-header{flex-wrap:wrap;height:auto!important}.app-header .header-tools{width:100%;justify-content:flex-start}.app-header #kioskLanguagePanel{right:auto;left:0;max-width:calc(100vw - 32px)}}
+body.large-text .screen:not([hidden]) :is(p,button,label,input,select,small,strong){font-size:max(1.3rem,1.06em)!important;line-height:1.4!important}
+body.large-text .screen:not([hidden]){overflow:auto!important}
+body.large-text #workspace #permissionScreen #permissionText{font-size:1.4rem!important} body.large-text #workspace .screen:not([hidden]) :is(p,button,label,input,select,small,strong){font-size:max(1.3rem,1.06em)!important} body.large-text #permissionScreen.v8-original #permissionText{font-size:1.4rem!important}
+
+#counterScreen article:has(#counterSecondTitle){display:none!important}
+
+#simpleOpeningReviewStep .application-details{margin:1rem 0;width:100%;text-align:left}
+.application-details>div{display:grid;grid-template-columns:minmax(7rem,35%) 1fr;align-items:baseline;padding:.65rem .3rem;border-bottom:1px solid #d6e3db}
+#openingScreen .application-details dt,#openingScreen .application-details dd{font-size:1.15rem;line-height:1.45;margin:0}
+.application-details dd{font-weight:600;overflow-wrap:anywhere}
+#openingScreen #simpleOpeningResult:not([hidden]){display:flex;flex-direction:column;align-items:stretch;height:auto;gap:.5rem}
+
+
+#workspace #openingScreen:has(#simpleOpeningResult:not([hidden])){display:flex!important;flex-direction:column;gap:4px;height:calc(100dvh - 145px)!important;min-height:0!important;box-sizing:border-box}
+#openingScreen:has(#simpleOpeningResult:not([hidden])) :is(.eyebrow,#simpleOpeningIntro,#simpleOpeningReadyText,#simpleOpeningStatus){display:none!important}
+#workspace #openingScreen #simpleOpeningResult:not([hidden]){flex:1 1 0;min-height:0!important;gap:4px!important}
+#workspace #simpleOpeningResult .v11-opening-preview{flex:1 1 0;min-height:0!important;overflow:hidden;background:#eee}
+#workspace #simpleOpeningResult :is(#openingPageImage,#simpleOpeningPreview):not([hidden]){display:block;width:100%!important;height:100%!important;min-height:0!important;object-fit:contain}
+#workspace #simpleOpeningResult #simpleOpeningPreview[hidden]{display:none!important}
+#workspace #simpleOpeningDownload,#workspace #simpleOpeningBack{flex:none}
+
+#answerCue:not([hidden]){display:inline-flex;align-items:center;gap:.4em;color:#245742;font-weight:600;white-space:nowrap}
+#answerCue:not([hidden])::before{content:'';width:.5em;height:.5em;border-radius:50%;background:currentColor}

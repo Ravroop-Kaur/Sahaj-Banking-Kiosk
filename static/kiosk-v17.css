@@ -1,0 +1,12 @@
+/* Keep the illustration within its container. */
+@media(min-width:850px){
+ #permissionScreen.v8-original.welcome-screen .voice-art{
+  align-self:center!important;
+  height:min(420px,calc(100% - 24px))!important;
+  max-height:calc(100% - 24px)!important;
+  min-height:0!important;
+  margin-block:12px!important;
+  overflow:hidden!important;
+ }
+ #voiceScreen .v8-voice-head p{margin-top:3px!important;}
+}

@@ -1,0 +1,71 @@
+{
+  "counter_1": {
+    "name": "Withdrawal & Deposit",
+    "services": [
+      "Cash withdrawal",
+      "Pension withdrawal",
+      "Cash deposit"
+    ]
+  },
+  "counter_2": {
+    "name": "Account & Other Services",
+    "services": [
+      "Account opening",
+      "Transfer request",
+      "Customer details update",
+      "Synthetic PAN/Aadhaar record assistance"
+    ]
+  },
+  "_comment": "Single source for UI and PDF synthetic counter guidance.",
+  "default": {
+    "cash_withdrawal": {
+      "counter": 1,
+      "label": "Cash Transactions",
+      "instruction": "Submit the approved request here.",
+      "staff_assistance": false
+    },
+    "cash_deposit": {
+      "counter": 1,
+      "label": "Cash Transactions",
+      "instruction": "Submit the approved request here.",
+      "staff_assistance": false
+    },
+    "account_opening": {
+      "counter": 2,
+      "label": "Account & Other Services",
+      "instruction": "Submit the printed form with your documents; staff will complete KYC with you.",
+      "staff_assistance": true
+    },
+    "passbook_replacement": {
+      "counter": 2,
+      "label": "Account & Other Services",
+      "instruction": "Ask staff to help with a replacement passbook.",
+      "staff_assistance": true
+    },
+    "mobile_address_update": {
+      "counter": 2,
+      "label": "Account & Other Services",
+      "instruction": "Submit the printed request with your address proof.",
+      "staff_assistance": true
+    },
+    "balance_enquiry": {
+      "counter": 2,
+      "label": "Account & Other Services",
+      "instruction": "Ask staff for your balance.",
+      "staff_assistance": true
+    },
+    "mini_statement": {
+      "counter": 2,
+      "label": "Account & Other Services",
+      "instruction": "Ask staff for a mini statement.",
+      "staff_assistance": true
+    },
+    "transfer_request": {
+      "counter": 2,
+      "label": "Account & Other Services",
+      "instruction": "Submit the printed transfer request; staff will review it.",
+      "staff_assistance": true
+    }
+  },
+  "branches": {}
+}

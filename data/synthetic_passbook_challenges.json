@@ -1,0 +1,26 @@
+[
+  {
+    "file": "01-clear-front.png",
+    "label": "Clear front cover · account number near top",
+    "source": "passbook-001.png",
+    "image_condition": "clear",
+    "width": 1800,
+    "height": 1200
+  },
+  {
+    "file": "02-rotated-90.png",
+    "label": "Rotated 90°",
+    "source": "passbook-008.png",
+    "image_condition": "rotate90",
+    "width": 1800,
+    "height": 1200
+  },
+  {
+    "file": "03-upside-down.png",
+    "label": "Rotated 180°",
+    "source": "passbook-015.png",
+    "image_condition": "rotate180",
+    "width": 1800,
+    "height": 1200
+  }
+]

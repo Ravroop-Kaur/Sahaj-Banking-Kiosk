@@ -1,0 +1,14 @@
+/* Let content flow instead of overlapping fixed viewport controls. */
+#v9PreviewScreen .v9-preview-details,#simpleOpeningGuide,#v16DepositGuide{display:none!important}
+#v9PreviewScreen .v9-preview-layout,#v16DepositPreviewScreen .v16-deposit-columns{grid-template-columns:minmax(0,1fr)!important}
+#simpleOpeningResult{display:flex!important;flex-direction:column!important;width:100%!important;max-height:none!important;overflow:visible!important}
+#simpleOpeningResult[hidden]{display:none!important}
+#simpleOpeningDownload{position:static!important;width:auto!important;align-self:center;margin:12px auto!important;min-height:52px!important}
+#openingScreen:not([hidden]){height:auto!important;min-height:100%!important;overflow:auto!important;justify-content:flex-start!important}
+#simpleOpeningStatus{position:static!important;transform:none!important;margin:12px auto!important;max-width:90%!important}
+#openingScreen .v11-opening-preview{width:100%;min-height:320px}
+#simpleOpeningPreview{width:100%!important;height:360px!important}
+.screen-stack:has(#openingScreen:not([hidden])){overflow:auto!important}
+.is-processing .shell{filter:blur(2px);transition:filter .15s}
+#processingHint{position:fixed;inset:45% auto auto 50%;transform:translateX(-50%);z-index:100000;background:#174d40;color:white;padding:20px 32px;border-radius:18px;font-size:24px;box-shadow:0 5px 30px #0003}
+#processingHint[hidden]{display:none}

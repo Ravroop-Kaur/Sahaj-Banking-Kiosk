@@ -1,0 +1,32 @@
+[
+  {
+    "customer_id": 1,
+    "account_number": "990000000001",
+    "full_name": "Nisha Rather",
+    "passbook": "static/synthetic_documents/passbooks/passbook-001.png",
+    "synthetic_aadhaar_mockup": "static/synthetic_documents/demo_aadhaar_cards/demo-aadhaar-001.png",
+    "synthetic_pan_mockup": "static/synthetic_documents/demo_pan_cards/demo-pan-001.png",
+    "legacy_demo_id_card": "static/synthetic_documents/demo_id_cards/demo-id-001.png",
+    "valid_for_real_use": false
+  },
+  {
+    "customer_id": 8,
+    "account_number": "990000000008",
+    "full_name": "Farah Kumar",
+    "passbook": "static/synthetic_documents/passbooks/passbook-008.png",
+    "synthetic_aadhaar_mockup": "static/synthetic_documents/demo_aadhaar_cards/demo-aadhaar-008.png",
+    "synthetic_pan_mockup": "static/synthetic_documents/demo_pan_cards/demo-pan-008.png",
+    "legacy_demo_id_card": "static/synthetic_documents/demo_id_cards/demo-id-008.png",
+    "valid_for_real_use": false
+  },
+  {
+    "customer_id": 15,
+    "account_number": "990000000015",
+    "full_name": "Diya Bhat",
+    "passbook": "static/synthetic_documents/passbooks/passbook-015.png",
+    "synthetic_aadhaar_mockup": "static/synthetic_documents/demo_aadhaar_cards/demo-aadhaar-015.png",
+    "synthetic_pan_mockup": "static/synthetic_documents/demo_pan_cards/demo-pan-015.png",
+    "legacy_demo_id_card": "static/synthetic_documents/demo_id_cards/demo-id-015.png",
+    "valid_for_real_use": false
+  }
+]

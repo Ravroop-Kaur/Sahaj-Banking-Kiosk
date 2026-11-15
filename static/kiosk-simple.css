@@ -1,0 +1,78 @@
+/* Kiosk layout with one choice per screen. */
+:root{--simple-ink:#163f3a;--simple-green:#14766a;--simple-cream:#f5f8f4}
+html,body{min-height:100%;}
+@media(min-width:850px){html,body{height:100%;overflow:hidden}body>.shell{height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}.shell>.workspace{flex:1;min-height:0;overflow:hidden;display:block}.screen-stack{height:100%;min-height:0;overflow:hidden}.app-header{flex:0 0 auto;padding-block:10px!important}.workspace .screen:not([hidden]){height:100%;min-height:0;overflow:auto;overscroll-behavior:contain}.workspace .screen:not([hidden])::-webkit-scrollbar{width:4px}.shell>footer{flex:0 0 auto;padding:5px 12px!important;font-size:12px!important;text-align:center}.journey,#voicePanel{display:none!important}}
+/* Home intentionally occupies exactly the free work area, without scrolling on laptops. */
+#permissionScreen{max-width:none!important;margin:0!important;padding:clamp(10px,2vh,24px) clamp(16px,4vw,54px)!important;background:var(--simple-cream)!important;border:0!important}
+#permissionScreen .kiosk-home{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,1.5vh,22px);max-width:1060px;margin:auto}
+.kiosk-welcome{text-align:center}.kiosk-overline{font-weight:800;letter-spacing:.15em;color:var(--simple-green);font-size:13px;margin:0 0 5px}
+#permissionScreen #permissionTitle{font-size:clamp(30px,4vw,54px)!important;line-height:1.13!important;margin:0 0 6px!important;color:var(--simple-ink)}
+#permissionTitle span{display:block;font-size:.7em;font-weight:550}
+#permissionText{font-size:clamp(16px,1.65vw,22px)!important;margin:0!important;line-height:1.35!important}
+.kiosk-callout{color:#31544b;font-size:clamp(13px,1.25vw,17px);margin-top:8px}
+.kiosk-services{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%}
+.kiosk-service{display:flex;align-items:center;justify-content:flex-start;text-align:left;gap:18px;min-height:clamp(76px,11vh,106px);padding:12px 24px!important;background:white!important;color:var(--simple-ink)!important;border:2px solid #cfe4dc!important;border-radius:18px!important;box-shadow:0 4px 14px #16483a0b;cursor:pointer}
+.kiosk-service:hover,.kiosk-service:focus-visible{border-color:var(--simple-green)!important;background:#e9f6ef!important}
+.kiosk-service-icon{display:grid;place-items:center;flex:0 0 58px;height:58px;border-radius:16px;background:#d9f0e7;color:var(--simple-green);font-size:29px;font-weight:800}
+.kiosk-service strong,.kiosk-service small{display:block}.kiosk-service strong{font-size:clamp(20px,2vw,27px);line-height:1.25}.kiosk-service small{font-size:clamp(15px,1.4vw,19px);font-weight:500;margin-top:3px}
+.kiosk-start-actions{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px;width:100%}.kiosk-start-actions button{min-height:60px!important;padding:10px 28px!important;font-size:clamp(16px,1.5vw,20px)!important}.kiosk-start-actions #fallbackActions{display:block!important}.kiosk-start-actions #permissionStatus{flex-basis:100%;text-align:center;margin:0;font-size:15px!important;min-height:0}
+.kiosk-language-box{text-align:center;width:100%;border-top:1px solid #d5e7dd;padding-top:10px}.kiosk-language-box>span{font-weight:650;font-size:14px}.kiosk-language-buttons{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:9px}.kiosk-language-buttons button{min-height:44px!important;padding:6px 16px!important;font-size:17px!important;border:1px solid #bfd8cc!important;border-radius:999px!important;background:white!important;color:#21473f!important}.kiosk-language-buttons button[aria-pressed=true]{background:#d9f0e7!important;border:2px solid #14766a!important;font-weight:750}
+#kioskListeningOverlay:not([hidden]){position:fixed;z-index:9999;inset:0;display:grid;place-items:center;background:var(--simple-green);color:white;text-align:center;padding:24px}
+.kiosk-listen-body{display:flex;flex-direction:column;align-items:center;gap:17px}.kiosk-listen-symbol{font-size:clamp(90px,16vw,170px);line-height:1;animation:kiosk-pulse 1.8s infinite}.kiosk-listen-body h2{font-size:clamp(38px,6vw,80px);margin:0;color:white}.kiosk-listen-body p{font-size:clamp(20px,2.4vw,29px);margin:0}.kiosk-stop{min-height:62px;padding:10px 32px;border:2px solid white;border-radius:14px;background:white;color:#125d53;font-size:20px;font-weight:700;margin-top:30px}
+@keyframes kiosk-pulse{0%,100%{opacity:.55;transform:scale(.92)}50%{opacity:1;transform:scale(1.06)}}
+/* Action screens: center one focused card, eliminate sidebar and transcript stacking. */
+@media(min-width:850px){.workspace:not(.is-home){max-width:none!important;padding:10px 22px!important}.workspace:not(.is-home) .screen:not([hidden]){max-width:1080px!important;margin:0 auto!important;padding:clamp(14px,2vw,30px)!important}.workspace .screen:not([hidden])>h1{font-size:clamp(27px,3vw,40px)!important;margin-block:4px 12px!important}.workspace .screen:not([hidden]) button{min-height:52px}.workspace .screen:not([hidden]) .sample-card img{max-height:140px;object-fit:contain}.workspace .screen:not([hidden]) .pdf-preview{max-height:34vh!important}.workspace .screen:not([hidden]) .confirm-passbook{max-height:23vh;object-fit:contain}}
+@media(max-height:740px) and (min-width:850px){#permissionScreen .kiosk-home{gap:6px}.kiosk-service{min-height:70px}.kiosk-service-icon{height:45px;flex-basis:45px}.kiosk-welcome #permissionTitle{font-size:34px!important}.kiosk-language-buttons{margin-top:4px}.kiosk-start-actions button{min-height:50px!important}.kiosk-language-box{padding-top:4px}}
+@media(max-width:849px){#permissionScreen .kiosk-home{height:auto;padding:10px 0}.kiosk-services{grid-template-columns:1fr}.kiosk-service{min-height:80px}.kiosk-start-actions{flex-direction:column}.kiosk-start-actions button{width:100%}#permissionScreen{padding:18px!important}.kiosk-language-buttons button{font-size:16px!important}}
+@media(prefers-reduced-motion:reduce){.kiosk-listen-symbol{animation:none}}
+@media(min-width:850px){.workspace,.screen-stack{width:100%!important;max-width:none!important}.workspace{margin:0!important}.workspace .screen-stack #permissionScreen{width:100%!important;max-width:none!important}}
+@media(min-width:850px) and (max-height:850px){.app-header{padding-block:4px!important;min-height:62px!important}.app-header .brand{transform:scale(.85);transform-origin:left center}#permissionScreen{padding:6px 20px!important}#permissionScreen .kiosk-home{gap:7px}#permissionScreen #permissionTitle{font-size:clamp(30px,3vw,40px)!important;margin-bottom:0!important}#permissionText{font-size:16px!important}.kiosk-callout{font-size:14px;margin-top:2px}.kiosk-services{gap:8px}.kiosk-service{min-height:74px;padding:7px 16px!important}.kiosk-service strong{font-size:20px}.kiosk-service small{font-size:15px;margin:0}.kiosk-start-actions button{min-height:46px!important;padding:5px 15px!important}.kiosk-language-box{padding-top:3px}.kiosk-language-buttons{margin-top:3px;gap:5px}.kiosk-language-buttons button{min-height:35px!important;font-size:15px!important;padding:4px 12px!important}.shell>footer{min-height:20px!important}}
+#permissionScreen.welcome-screen{display:block!important;grid-template-columns:none!important}#permissionScreen .kiosk-home{width:min(100%,1000px)!important;max-width:1000px!important}#permissionScreen .kiosk-services{width:100%!important}
+@media(min-width:850px) and (max-height:850px){#permissionScreen .kiosk-start-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}#permissionScreen .kiosk-start-actions #fallbackActions{width:100%}#permissionScreen .kiosk-start-actions button{width:100%;margin:0!important}.kiosk-start-actions #permissionStatus{grid-column:1/-1;max-height:36px;overflow:hidden;line-height:1.25!important;font-size:12px!important}.kiosk-language-box>span{font-size:12px}#permissionScreen .kiosk-home{gap:6px}}
+#openingScreen .simple-opening-field{display:grid;gap:8px;font-size:20px;font-weight:700;margin:14px 0}#openingScreen .simple-pan-choice{display:flex;flex-wrap:wrap;gap:12px 24px;border:1px solid #cadbd0;border-radius:12px;padding:16px;margin:14px 0}#openingScreen .simple-pan-choice legend{font-size:19px;font-weight:700;padding:0 5px}#openingScreen .simple-pan-choice label{display:flex;gap:8px;align-items:center;font-size:18px}#openingScreen .simple-pan-choice input{min-height:20px;width:22px}#openingScreen .check{font-size:18px}#openingScreen #simpleOpeningDownload{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}#openingScreen .big{max-width:100%;margin:8px 0!important}
+/* Respect visibility changes; specific kiosk-home display rule must never override hidden. */
+#permissionScreen[hidden]{display:none!important}
+#simpleAmountScreen .simple-amount-center{display:flex;flex-direction:column;justify-content:center;max-width:900px;margin:auto;height:100%;gap:14px}
+#simpleAmountQuestion{font-size:clamp(32px,4vw,48px)!important;margin:0!important}#simpleAmountDescription{font-size:21px;margin:0}#simpleAmountLabel{font-size:21px;font-weight:700}#simpleAmountInput{font-size:clamp(32px,5vw,48px);min-height:85px;font-weight:750;text-align:center}
+.simple-amount-shortcuts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.simple-amount-shortcuts button{min-height:68px!important;background:#e4f2e9;border:2px solid #b6d8cb;border-radius:12px;font-size:23px;font-weight:750;color:#174b40}.simple-amount-shortcuts button:hover{background:#c8e8d9}#simpleAmountScreen .big{margin:6px 0!important}#simpleAmountBack{align-self:center}
+@media(max-width:620px){.simple-amount-shortcuts{grid-template-columns:repeat(2,1fr)}.simple-amount-shortcuts button{min-height:60px!important}}
+/* V7 welcome: two separate greetings, consistently spaced, touch-sized. */
+#permissionScreen .kiosk-home{width:min(100%,1120px)!important;max-width:1120px!important;justify-content:space-evenly;gap:clamp(12px,2.2vh,26px)}
+#permissionScreen .kiosk-welcome{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
+#permissionScreen #permissionTitle{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:clamp(24px,5vw,80px);font-size:clamp(36px,4.5vw,62px)!important;line-height:1.18!important;margin:0!important}
+#permissionScreen #permissionTitle span{display:inline-block;font-size:1em;font-weight:750}
+#permissionScreen .kiosk-main-question{display:flex;justify-content:center;flex-wrap:wrap;gap:clamp(12px,3vw,40px);font-size:clamp(18px,2.1vw,27px)!important;font-weight:550}
+#permissionScreen .kiosk-services{grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,1.8vh,20px)}
+#permissionScreen .kiosk-service{min-height:clamp(88px,12vh,130px);padding:clamp(13px,2vh,24px) clamp(17px,2vw,30px)!important}
+#permissionScreen .kiosk-start-actions{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:16px}
+#permissionScreen .kiosk-start-actions button{min-height:clamp(66px,9vh,86px)!important;width:100%;font-size:clamp(19px,2vw,26px)!important;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px}
+#permissionScreen .kiosk-start-actions button span{display:block;font-size:.7em;font-weight:500}
+#permissionScreen .kiosk-language-box{border-top:1px solid #d5e7dd;padding-top:12px}
+#permissionScreen .kiosk-callout{margin:0!important;text-align:center;font-size:clamp(13px,1.3vw,17px)}
+/* Language settings stay accessible on every screen; separate voice, screen, and printed form. */
+.kiosk-language-control{position:fixed;right:14px;top:10px;z-index:9500;max-width:min(92vw,360px)}
+#kioskLanguageToggle{display:block;min-height:44px!important;border:1px solid #a3cabd!important;border-radius:22px!important;background:#fff!important;color:#174d42!important;font-weight:750;font-size:14px!important;padding:8px 15px!important;box-shadow:0 2px 10px #1238}
+#kioskLanguagePanel:not([hidden]){display:grid;gap:10px;background:white;border:2px solid #aed9c8;border-radius:16px;padding:17px;box-shadow:0 10px 30px #14362c44;margin-top:6px;color:#174337}
+#kioskLanguagePanel label{font-weight:700;font-size:16px}
+#kioskLanguagePanel select{font-size:20px;min-height:48px;padding:6px;border:1px solid #adcabd;border-radius:8px;background:white;color:#173f39}
+#kioskDocumentNote{font-size:13px;line-height:1.5;margin:2px 0}
+#kioskLanguageClose{background:#14766a;color:white;border:0;border-radius:9px;min-height:45px;font-size:17px}
+@media(min-width:850px) and (max-height:850px){#permissionScreen .kiosk-home{gap:clamp(6px,1.3vh,13px)}#permissionScreen #permissionTitle{font-size:clamp(32px,3vw,42px)!important}#permissionScreen .kiosk-main-question{font-size:18px!important}#permissionScreen .kiosk-service{min-height:clamp(73px,10vh,95px)}#permissionScreen .kiosk-start-actions button{min-height:56px!important;font-size:19px!important}#permissionScreen .kiosk-language-box{padding-top:5px}}
+@media(max-width:849px){#permissionScreen .kiosk-home{gap:15px!important}#permissionScreen .kiosk-services{grid-template-columns:1fr}#permissionScreen .kiosk-start-actions{grid-template-columns:1fr}#permissionScreen #permissionTitle{font-size:36px!important;gap:12px}#permissionScreen .kiosk-main-question{flex-direction:column;gap:4px}#kioskLanguageToggle{font-size:12px!important}.kiosk-language-control{right:8px;top:7px}}
+
+.kiosk-language-control{z-index:10003}
+
+/* Voice page is a kiosk, never a transcript column. */
+#voiceScreen{display:flex;flex-direction:column;justify-content:space-evenly;align-items:center;gap:clamp(12px,2vh,25px);background:#f5f8f4!important;text-align:center}
+#voiceScreen[hidden]{display:none!important}
+#voiceGreeting{font-size:clamp(36px,5vw,60px)!important;color:#163f3a!important;margin:0!important}
+#voiceHint{font-size:clamp(21px,2.4vw,30px)!important;margin:0!important}
+#voiceScreen #kioskVoiceServices{width:min(100%,1020px);flex:0 0 auto;gap:14px}
+#voiceScreen #voiceChat{display:none!important}
+#voiceScreen #voiceStatus{font-size:clamp(17px,2vw,23px);max-width:900px;margin:0;min-height:0}
+#voiceScreen #voicePrivacyNotice{font-size:14px!important;max-width:850px}
+@media(max-width:849px){#voiceScreen #kioskVoiceServices{grid-template-columns:1fr}}
+
+/* Keep the upper navigation uncluttered; language is the one prominent control. */
+#aboutDemo{display:none!important}
+#permissionScreen .kiosk-start-actions button span{font-size:.7em!important;font-weight:500!important}

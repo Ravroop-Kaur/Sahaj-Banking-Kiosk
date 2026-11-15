@@ -1,0 +1,24 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Python and development files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+# Local outputs and runtime state
+*.sqlite3-wal
+*.sqlite3-shm
+data/runtime/
+logs/
+*.log
+.DS_Store
+Thumbs.db

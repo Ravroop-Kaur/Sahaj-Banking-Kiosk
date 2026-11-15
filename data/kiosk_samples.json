@@ -1,0 +1,68 @@
+{
+  "passbook": {
+    "path": "static/synthetic_documents/passbook_challenges/01-clear-front.png",
+    "account_id": "990000000001",
+    "fallbacks": [
+      {
+        "path": "static/synthetic_documents/passbooks/passbook-008.png",
+        "account_id": "990000000008"
+      },
+      {
+        "path": "static/synthetic_documents/passbooks/passbook-015.png",
+        "account_id": "990000000015"
+      }
+    ]
+  },
+  "identity": {
+    "path": "static/kiosk/identity.png",
+    "fields": {
+      "name": "Asha Demo",
+      "dob": "1995-04-12",
+      "address": "12 Fictional Lane, Demo Town"
+    },
+    "fallbacks": [
+      {
+        "path": "static/kiosk/identity-backup-1.png",
+        "fields": {
+          "name": "Asha Demo",
+          "dob": "1995-04-12",
+          "address": "12 Fictional Lane, Demo Town"
+        }
+      },
+      {
+        "path": "static/kiosk/identity-backup-2.png",
+        "fields": {
+          "name": "Asha Demo",
+          "dob": "1995-04-12",
+          "address": "12 Fictional Lane, Demo Town"
+        }
+      }
+    ]
+  },
+  "pan": {
+    "path": "static/kiosk/pan.png",
+    "fields": {
+      "name": "Asha Demo",
+      "dob": "1995-04-12",
+      "address": "12 Fictional Lane, Demo Town"
+    },
+    "fallbacks": [
+      {
+        "path": "static/kiosk/pan-backup-1.png",
+        "fields": {
+          "name": "Asha Demo",
+          "dob": "1995-04-12",
+          "address": "12 Fictional Lane, Demo Town"
+        }
+      },
+      {
+        "path": "static/kiosk/pan-backup-2.png",
+        "fields": {
+          "name": "Asha Demo",
+          "dob": "1995-04-12",
+          "address": "12 Fictional Lane, Demo Town"
+        }
+      }
+    ]
+  }
+}
