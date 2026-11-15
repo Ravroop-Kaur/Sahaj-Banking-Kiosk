@@ -151,7 +151,11 @@ function followSpokenLanguage(spoken,providerLanguage=''){
   // An empty provider hint must not default to English.
   // Prefer an unmistakable regional phrase when a recognizer mislabels it as English or Hindi.
   const strongRegional=inferred&& !['en','hi'].includes(inferred);
-  const detected=strongRegional&&['en','hi'].includes(reported)?inferred:(providerLanguage&&SUPPORTED_UI.includes(reported)?reported:inferred);
+  // A bank's English name can skew the locale of an otherwise Hindi sentence.
+  const clearHindi=inferred==='hi' && (/[\u0900-\u097f]{2,}/u.test(spoken) ||
+    /\b(?:paise|paisa|mujhe|mujhko)\b.*\b(?:kar[a-z]*|nika[a-z]*|chahiye|hain?)\b/i.test(spoken));
+  const preferTranscript=(strongRegional&&['en','hi'].includes(reported)) || (clearHindi&&reported==='en');
+  const detected=preferTranscript?inferred:(providerLanguage&&SUPPORTED_UI.includes(reported)?reported:inferred);
   if(!detected||!SUPPORTED_UI.includes(detected))return;
   if(!speechLanguageLocked)speakingLanguage=detected;
   if(!displayLanguageLocked && language!==detected){

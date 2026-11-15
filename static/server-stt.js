@@ -63,6 +63,8 @@ async function startServerRecognition(){
   const Ctx=window.AudioContext||window.webkitAudioContext;
   if(!navigator.mediaDevices?.getUserMedia||!Ctx){showFatalError('microphone-unsupported');return}
   const rec={dead:false,chunks:[],speech:false,speechMs:0,silenceMs:0,totalMs:0,noiseFloor:0.00065,ambient:[],ownStream:false};
+  // A passbook answer may include a correction after a short pause ("withdraw … not deposit").
+  const endOfTurnMs=activeScreen==='v8PassbookScreen'?950:SERVER_STT.silenceMs;
   serverRec=rec;
   try{
     let stream=activeMicStream&&activeMicStream.getAudioTracks().some(t=>t.readyState==='live')?activeMicStream:null;
@@ -126,7 +128,7 @@ async function startServerRecognition(){
           }
         }
         rec.silenceMs=loud?0:rec.silenceMs+ms;
-        if(rec.silenceMs>=SERVER_STT.silenceMs||rec.totalMs>=SERVER_STT.maxMs)finishServerClip(rec,true);
+        if(rec.silenceMs>=endOfTurnMs||rec.totalMs>=SERVER_STT.maxMs)finishServerClip(rec,true);
       }
     };
     // Reduce low-frequency fan and handling rumble before detection and encoding.

@@ -18,9 +18,11 @@
       /ಹಣ(?:ವನ್ನು)? (?:ತೆಗೆ|ತೆಗಿ)[\p{L}\p{M}]*|ಹಿಂಪಡೆ[\p{L}\p{M}]*|\b(?:tegeya|tegedu|himpadey)\w*/,
     ],
     deposit: [
+      /\b(?:jamaa|jamma|jamaah?|jamha)\b/u,
+      /\bcash in to (?:my |the )?account\b|बैंक में पैसे डाल|ব্যাংকে টাকা রাখা|வங்கியில் பணம் கட்ட|ಬ್ಯಾಂಕಿಗೆ ಹಣ ಕಟ್ಟು/u,
       /\bdeposit\b|\bput (?:some )?(?:money|cash) (?:in|into)\b/,
       /जमा|\bjama\b|\bpaise\s+jama\b/,
-      /ਜਮ੍ਹਾ|ਜਮਾਂ|ਜਮਾ|ਪਾਉਣ|\bjam[mh]a\b/,
+      /ਜਮ੍ਹਾ(?:ਂ)?|ਜਮਾਂ|ਜਮਾ|ਪਾਉਣ|\bjam[mh]a\b/,
       /জমা|ডিপোজিট|\b(?:joma|taka joma)\b/,
       /செலுத்த[\p{L}\p{M}]*|வைப்ப[\p{L}\p{M}]*|டெபாசிட்|போட[\p{L}\p{M}]*|\b(?:seluth\w*|panam\s+pod\w*)\b/,
       /ಜಮೆ|ಜಮಾ|ಠೇವಣಿ|ಹಾಕ[\p{L}\p{M}]*|\b(?:jame|haak\w*|hak\w*)\b/,
@@ -141,7 +143,15 @@
     if(/\b(?:no|not|don't|dont|cancel)\b|नहीं|मत |ਨਹੀਂ|ਨਾ ਕਰੋ|করবেন না|চাই না|வேண்டாம்|ಬೇಡ/u.test(command))return false;
     return /\b(?:download|print)\b|डाउनलोड|प्रिंट|ਪ੍ਰਿੰਟ|ਡਾਊਨਲੋਡ|ডাউনলোড|প্রিন্ট|பதிவிறக்|அச்சிடு|டவுன்லோட்|ಡೌನ್[‌]?ಲೋಡ್|ಮುದ್ರಿಸು/u.test(command);
   }
-  const api={parse,copy,wantsDownload};
+  // A sample can be named in a sentence. Bare option numbers must stand alone.
+  function chosePassbook(raw){
+    const text=String(raw||'').normalize('NFKC').toLowerCase()
+      .replace(/[\u200b-\u200d]/gu,'').replace(/[.!?,।]+/gu,' ').trim();
+    if(/\b(?:not|no|don't|dont|nahi|nahin)\b|नहीं|मत |ਨਹੀਂ|করব না|চাই না|வேண்டாம்|ಬೇಡ/u.test(text))return false;
+    if(/^(?:(?:option|number|the)\s+)?(?:one|first|1|पहला|पहली|ਪਹਿਲਾ|প্রথম|முதல்|ಮೊದಲ)(?:\s+(?:one|option|please))?$/u.test(text))return true;
+    return /\b(?:pass\s*books?|passwords?|demo|sample)\b|पास\s*बुक|पासवर्ड|नमूना|डेमो|ডেমো|পাসবই|পাসবুক|பாஸ்புக்|டெமோ|மாதிரி|ಪಾಸ್ಬುಕ್|ಡೆಮೋ|ಡೆಮೊ|ਡੈਮੋ|ਪਾਸਬੁੱਕ|ਨਮੂਨਾ/u.test(text);
+  }
+  const api={parse,copy,wantsDownload,chosePassbook};
   if(typeof window!=='undefined')window.SahajServiceCorrection=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })();

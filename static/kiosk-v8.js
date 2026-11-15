@@ -20,6 +20,23 @@ const passbookGuides={
  ta:'பாஸ்புக் ஸ்கேன் வசதி தற்போது இல்லை. தொடர டெமோ பாஸ்புக்கைத் தேர்ந்தெடுக்கவும் அல்லது டெமோ பாஸ்புக் என்று கூறவும்.',
  kn:'ಪಾಸ್‌ಬುಕ್ ಸ್ಕ್ಯಾನ್ ಸೌಲಭ್ಯ ಈಗ ಲಭ್ಯವಿಲ್ಲ. ಮುಂದುವರಿಯಲು ಡೆಮೊ ಪಾಸ್‌ಬುಕ್ ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ಡೆಮೊ ಪಾಸ್‌ಬುಕ್ ಎಂದು ಹೇಳಿ.'
 };
+const cashFormNames={
+ en:{deposit:'Deposit form',withdrawal:'Withdrawal form'},
+ hi:{deposit:'जमा फ़ॉर्म',withdrawal:'निकासी फ़ॉर्म'},
+ pa:{deposit:'ਜਮ੍ਹਾਂ ਫਾਰਮ',withdrawal:'ਨਿਕਾਸੀ ਫਾਰਮ'},
+ bn:{deposit:'জমার ফর্ম',withdrawal:'টাকা তোলার ফর্ম'},
+ ta:{deposit:'பணம் செலுத்தும் படிவம்',withdrawal:'பணம் எடுக்கும் படிவம்'},
+ kn:{deposit:'ಜಮಾ ನಮೂನೆ',withdrawal:'ಹಣ ಹಿಂಪಡೆಯುವ ನಮೂನೆ'}
+};
+function passbookServicePrompt(short=false){
+ const form=(cashFormNames[speakingLanguage]||cashFormNames.en)[service];
+ const next=short?({
+ en:'Say or choose Demo passbook.',hi:'डेमो पासबुक बोलें या चुनें।',pa:'ਡੈਮੋ ਪਾਸਬੁੱਕ ਕਹੋ ਜਾਂ ਚੁਣੋ।',
+ bn:'ডেমো পাসবই বলুন অথবা বেছে নিন।',ta:'டெமோ பாஸ்புக் என்று சொல்லுங்கள் அல்லது தேர்வு செய்யுங்கள்.',
+ kn:'ಡೆಮೊ ಪಾಸ್‌ಬುಕ್ ಎಂದು ಹೇಳಿ ಅಥವಾ ಆಯ್ಕೆಮಾಡಿ.'
+ })[speakingLanguage]:passbookGuides[speakingLanguage];
+ return form+'. '+(next||passbookGuides.en);
+}
 const passbookGuide=()=>passbookGuides[language]||passbookGuides.en;
 
 const money=n=>'₹ '+Number(n).toLocaleString('en-IN',{maximumFractionDigits:2});
@@ -60,10 +77,10 @@ async function startGreeting(initial=false){el('voiceManual').hidden=false;greet
 
 function restoreHome(){if(window.SahajHome){window.SahajHome.apply();return}el('permissionTitle').innerHTML='Bank forms,<br>filled by <em>voice.</em>';el('permissionText').textContent='Speak in your language or choose a form. Print it, then take it to the bank counter.';el('voiceContinue').textContent='Start with voice · बोलकर शुरू करें';el('manualContinue').textContent='Use touch or keyboard →';}
 function home(){service='';step='home';busy=false;endSession();restoreHome();}
-async function chooseService(kind){failedReplies=0;if(kind==='help'){status('voiceStatus',words().help);if(mode==='voice')await promptVoice(spokenWords().help+' '+currentQuestion());return}
+async function chooseService(kind,corrected=false){failedReplies=0;if(kind==='help'){status('voiceStatus',words().help);if(mode==='voice')await promptVoice(spokenWords().help+' '+currentQuestion());return}
  if(kind==='opening'){service=kind;step='opening';show('openingScreen');window.SahajOpeningFlow?.start();return}
  service=kind;step='passbook';status('v8PassbookStatus','');localizeV8();if(activeScreen==='voiceScreen'){const b=document.querySelector(`[data-v8-service="${kind}"]`);b?.classList.add('selected');await new Promise(r=>setTimeout(r,0));}
- show('v8PassbookScreen');const guide=passbookGuide();el('v8PassbookDesc').textContent=guide;if(mode==='voice')await promptVoice(passbookGuides[speakingLanguage]||passbookGuides.en);}
+ show('v8PassbookScreen');const guide=passbookGuide();el('v8PassbookDesc').textContent=guide;if(mode==='voice')await promptVoice(passbookServicePrompt(corrected));}
 let scanTurn=0;
 // Navigation and corrections are handled for all six languages by service-correction.js.
 async function chooseDemo(){if(busy)return;const turn=++scanTurn;busy=true;if(mode==='voice')stopServerRecognition();status('v8PassbookStatus',({en:'Reading demo passbook…',hi:'डेमो पासबुक पढ़ी जा रही है…',pa:'ਡੈਮੋ ਪਾਸਬੁੱਕ ਪੜ੍ਹੀ ਜਾ ਰਹੀ ਹੈ…',bn:'ডেমো পাসবই পড়া হচ্ছে…',ta:'மாதிரி பாஸ்புக் வாசிக்கப்படுகிறது…',kn:'ಡೆಮೊ ಪಾಸ್‌ಬುಕ್ ಓದಲಾಗುತ್ತಿದೆ…'})[language]||'Reading demo passbook…');try{
@@ -283,7 +300,7 @@ async function switchService(kind){
  cancelCurrentWork(keepProfile);
  if(!keepProfile){passbook={name:'',account_id:'',branch:'',phone:'',profile:null};imageFile=null;}
  if(keepProfile){service=kind;showAmount();return;}
- await chooseService(kind);
+ await chooseService(kind,Boolean(previous));
 }
 async function navigateBack(){
  if(step==='opening'&&window.SahajOpeningFlow?.back?.())return;
@@ -300,6 +317,11 @@ async function navigateCorrection(command){
  if(command.action==='restart'){await chooseServiceMenu(true);return true;}
  if(command.action==='choose'){await chooseServiceMenu();return true;}
  if(command.action==='service'){
+  if(command.service===service&&step==='passbook'){
+   failedReplies=0;
+   if(!busy)await promptVoice(passbookServicePrompt(true));
+   return true;
+  }
   if(command.service===service&&step!=='service')return false;
   await switchService(command.service);return true;
  }
@@ -355,7 +377,7 @@ async function handleVoice(raw,detected=''){
  
  if(step==='service'||step==='home'){if(intent==='withdrawal'||intent==='deposit'){await chooseService(intent);return}if(wantsNewAccount(t)){await chooseService('opening');return}if(intent==='unsupported')await promptVoice(spokenWords().unsupported);else await retryReply();return}
  if(step==='opening'){if(window.SahajOpeningFlow?.handleVoice){await window.SahajOpeningFlow.handleVoice(t);}return;}
- if(step==='passbook'){if(/passbook|pass book|password|पासबुक|पास बुक|पासवर्ड|demo|sample|नमूना|डेमो|ডেমো|পাসবই|পাসবুক|பாஸ்புக்|டெமோ|மாதிரி|ಪಾಸ್‌ಬುಕ್|ಡೆಮೋ|ಡೆಮೊ|ਡੈਮੋ|ਪਾਸਬੁੱਕ|ਨਮੂਨਾ|one|पहला|first|1/i.test(t)){failedReplies=0;await chooseDemo();}else await retryReply();return}
+ if(step==='passbook'){if(window.SahajServiceCorrection.chosePassbook(t)){failedReplies=0;await chooseDemo();}else await retryReply();return}
  if(step==='review'){const answer=window.sahajConfirmation(t,'review');if(answer==='no'){failedReplies=0;showAmount();return;}if(answer==='yes'){failedReplies=0;await prepareReviewed();return;}await retryReply();return;}
  if(step==='preview'){if(window.SahajServiceCorrection.wantsDownload(t)){el(service==='deposit'?'downloadSampleForm':'download').click();return}await promptVoice(reviewCopy(speakingLanguage).ready);return}
  if(step==='amount'){const n=spokenNumberValue(t);if(n){failedReplies=0;submitAmount(n);return}await retryReply();return}

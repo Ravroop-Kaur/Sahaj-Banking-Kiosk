@@ -192,3 +192,11 @@ test('auto recognition is not narrowed to English before the first utterance', (
   const laterOverride = read('kiosk-v20.js');
   assert.match(laterOverride, /_multilingualFollowSpokenLanguage\(text,providerLanguage\)/);
 });
+
+test('an English bank name does not override a Hindi deposit request', () => {
+  for (const phrase of ['Punjab Bank mein paise jama karane hain','Punjab Bank में पैसे जमा कराने हैं']) {
+    const ctx=languageContext();
+    ctx.followSpokenLanguage(phrase,'en-IN');
+    assert.equal(ctx.speakingLanguage,'hi');
+  }
+});
