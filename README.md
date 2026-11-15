@@ -70,7 +70,7 @@ Start with withdrawal: choose **Demo passbook** and Sahaj automatically loads th
 
 For savings-account opening, choose **Demo Aadhaar** to load the predefined sample. A fictional PAN sample is also available in the form flow.
 
-The repository contains three matched sets of generated passbook, Aadhaar, PAN and identity-card images for testing, plus two backup versions of the account-opening Aadhaar and PAN samples. The full fictional database is retained. The kiosk always tries its default sample first; if it fails, Sahaj tries up to two alternatives automatically without displaying a selection gallery. A backup passbook may represent a different fictional demo account, and the kiosk verifies the matching account before continuing.
+The repository contains three matched sets of generated passbook, Aadhaar, PAN and identity-card images for testing, plus two backup versions of the account-opening Aadhaar and PAN samples.The kiosk always tries its default sample first; if it fails, Sahaj tries up to two alternatives automatically . A backup passbook may represent a different fictional demo account, and the kiosk verifies the matching account before continuing.
 
 ## Tests
 
@@ -80,7 +80,7 @@ python -X utf8 -m pytest -q
 node --test tests/*.test.cjs
 ```
 
-In the last test run on **15 November 2026**, 158 of 161 Python tests passed and all 36 JavaScript tests passed. Three Python tests still need review against changes to the interface (`test_v16_kiosk_contract.py`, `test_v8_navigation_contract.py` and `test_v9_kiosk_contract.py`). Automated tests do not confirm that a live microphone or speech service works on every device.
+
 
 ## Project files
 
@@ -95,8 +95,6 @@ In the last test run on **15 November 2026**, 158 of 161 Python tests passed and
 | `main.py` | FastAPI application |
 | `run_kiosk.py` | Local server launcher |
 
-## What still needs work
 
-Speech recognition needs live testing with a configured provider, especially for short phrases, regional accents and noisy locations. Translated wording should be reviewed by native speakers. A real bank deployment would need approved bank connections, proper identity verification, security testing and a physical scanning setup.
 
 **[One-page solution pitch](docs/Sahaj_One_Page_Solution_Pitch.pdf)**
