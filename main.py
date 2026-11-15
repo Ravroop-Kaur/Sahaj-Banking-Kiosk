@@ -648,12 +648,12 @@ def _fallback_intent(text: str) -> dict:
         "money out", "cash from my account", "give me cash", "get my pension", "receive my pension",
         "pension", "take my money", "cash please", "निकाल", "निकासी", "काढ", "पैसे काढ", "पैसे निकाल",
         "पैसा निकाल", "पैसे चाहिए", "पैसे चाहिये", "रुपये चाहिए", "रुपए चाहिए", "पेंशन", "कढ",
-        "ਕਢ", "ਕਢਵ", "ਪੈਸੇ ਕਢ", "paise nikal", "paisa nikal",
+        "ਕਢ", "ਕਢਵ", "ਪੈਸੇ ਕਢ", "पैसे कड़", "पैसे कढ", "पैसे कड्ढ", "paise nikal", "paisa nikal",
         "paise nikalne", "pension nikal", "pension leni", "paisa chahiye", "paise chahiye",
         "paise kadh", "cash kadh", "paisa kadhwana", "nikalna hai", "nikalwane hain",
         # Kannada, Tamil, Bengali: take out / withdraw money
         "ಹಣ ತೆಗೆ", "ದುಡ್ಡು ತೆಗೆ", "ಹಣ ಬೇಕು", "ಡ್ರಾ", "ಹಿಂಪಡೆ", "ಪಿಂಚಣಿ", "பணம் எடு", "பணம் வேண்டும்", "எடுக்க", "திரும்பப் பெற", "ஓய்வூதியம்",
-        "টাকা তুল", "টাকা লাগবে", "টাকা চাই", "উত্তোলন", "তুলতে", "পেনশন",
+        "টাকা তুল", "টাকা বের", "টাকা নিতে", "টাকা লাগবে", "টাকা চাই", "উত্তোলন", "তুলতে", "পেনশন",
     ]
     deposit_terms = [
         "deposit", "put money in", "add money", "pay into", "put cash", "cash in", "credit my account",
@@ -680,7 +680,7 @@ def _fallback_intent(text: str) -> dict:
     unsupported_terms = ["open an account", "open account", "account opening", "new account", "change my address", "update my details", "change phone", "aadhaar", "aadhar", "pan card", "check balance", "balance inquiry", "transfer money", "send money", "account open", "open a bank account", "change address", "apply for loan", "credit card", "मुझे अकाउंट खोलना", "मुझे खाता खोलना", "अकाउंट खोलना", "खाता खोलना", "नया खाता", "बैंक खाता खोल", "बैलेंस चेक", "बैलेंस बत", "आधार जोड़", "आधार लिंक", "पता बदल", "मोबाइल नंबर बदल", "पैसे ट्रांसफर", "लोन चाहिए", "खाता खुलवाना", "ਖਾਤਾ ਖੋਲ੍ਹ", "ਨਵਾਂ ਖਾਤਾ", "ਬੈਲੰਸ ਚੈੱਕ", "ਪਤਾ ਬਦਲ"]
     if any(w in s for w in unsupported_terms):
         return {"intent": "unsupported", "confidence": "medium", "amount": "", "message": "This kiosk currently prepares only withdrawal and deposit drafts. Please ask bank staff for this request.", "engine": "fallback"}
-    return {"intent": "unclear", "confidence": "low", "amount": "", "message": "Please tell me whether you want to withdraw money or deposit money. You can speak naturally in Hindi or English.", "engine": "fallback"}
+    return {"intent": "unclear", "confidence": "low", "amount": "", "message": "Please tell me whether you want to withdraw money or deposit money. You can speak naturally in your language.", "engine": "fallback"}
 
 
 @app.get("/api/voice/fallback")

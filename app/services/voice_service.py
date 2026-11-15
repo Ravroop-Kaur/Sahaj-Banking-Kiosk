@@ -31,13 +31,13 @@ def transcribe(wav, language="", request_id="", session=None):
         gnani_summary = result.public()
         if result.status in (OK, EMPTY):
             _record(session, "gnani")
-            return {"text": result.text, "engine": "gnani", "provider": "gnani", "errors": [], "gnani": gnani_summary}
+            return {"text": result.text, "detected_language": result.detected_language, "engine": "gnani", "provider": "gnani", "errors": [], "gnani": gnani_summary}
         errors.append(f"gnani: {result.status}")
     fb = voice_fallback.transcribe(wav, language)
     provider = f"fallback:{fb['engine']}" if fb.get("engine") else None
     _record(session, provider or "none")
     get_audit_logger().log("voice.stt", getattr(session, "correlation_id", ""), provider=provider or "none", gnani_status=(gnani_summary or {}).get("status", "not_used"))
-    return {"text": fb.get("text", ""), "engine": provider, "provider": provider, "errors": errors + list(fb.get("errors", [])), "gnani": gnani_summary}
+    return {"text": fb.get("text", ""), "detected_language": fb.get("detected_language", ""), "engine": provider, "provider": provider, "errors": errors + list(fb.get("errors", [])), "gnani": gnani_summary}
 
 
 def speak(text, language="", session=None):

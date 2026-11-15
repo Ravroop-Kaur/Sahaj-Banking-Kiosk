@@ -14,7 +14,7 @@
  get('kioskLanguageClose').addEventListener('click',()=>{panel.hidden=true;toggle.setAttribute('aria-expanded','false');toggle.focus()});
  ui.addEventListener('change',()=>{
    if(ui.value==='auto')return;
-   window.sahajExplicitScreenChoice=true;language=ui.value;displayLanguageLocked=true;languageCommandMode='display';
+   window.sahajExplicitScreenChoice=true;window.sahajDetectedScreenLanguage=false;language=ui.value;displayLanguageLocked=true;languageCommandMode='display';
    try{localize()}catch(e){console.warn('display language',e)}
    window.dispatchEvent(new Event('sahaj:language-preference'));refresh();
  });

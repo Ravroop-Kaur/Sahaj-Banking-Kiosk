@@ -92,7 +92,7 @@ const FORMS=['withdrawal','deposit','opening'];
 
 /* A screen language counts as chosen once the person picked it in the panel, or asked for it by voice. */
 function explicit(){
- if(window.sahajExplicitScreenChoice===true)return true;
+ if(window.sahajExplicitScreenChoice===true||window.sahajDetectedScreenLanguage===true)return true;
  try{return typeof displayLanguageLocked!=='undefined'&&displayLanguageLocked===true}catch{return false}
 }
 function currentLang(){
@@ -168,7 +168,7 @@ if(ui){
  ui.addEventListener('change',()=>{
   if(ui.value!=='auto')return;
   window.sahajExplicitScreenChoice=false;
-  try{displayLanguageLocked=false;language='en';localize()}catch(e){console.warn('auto language',e)}
+  try{displayLanguageLocked=false;window.sahajDetectedScreenLanguage=false;language='en';localize()}catch(e){console.warn('auto language',e)}
   window.dispatchEvent(new Event('sahaj:language-preference'));
   schedule();
  },true);

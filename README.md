@@ -20,10 +20,10 @@ Sahaj makes that process easier to follow: choose what you need, answer a few qu
 - **Deposit cash:** Choose Demo passbook to load a sample automatically, enter the amount and prepare a deposit slip.
 - **Open a savings account:** Choose the demo Aadhaar option and follow the prompts. Sahaj loads the fictional identity sample automatically and can use a demo PAN sample when required. Bank staff would still need to complete real identity checks.
 - **Speak or tap:** Use speech guidance when available, or continue with on-screen controls and a keyboard.
-- **Choose languages:** Set the screen language and spoken language separately. Language availability varies across screens and speech services.
+- **Choose languages:** The kiosk supports English, Hindi, Punjabi, Bengali, Tamil and Kannada for its guided banking flow. Speak in one of these languages to switch automatically, or choose different languages for the screen and voice.
 - **Review before downloading:** Check the information, see where to sign and follow directions to the appropriate counter.
 
-The kiosk uses one predefined passbook for its normal demo. You do not pick from a gallery of customer passbooks. If the first sample cannot be loaded or read, Sahaj automatically tries one of two backup samples. The backups remain hidden from the customer. Physical passbook scanning is not available. Voice features need a working provider configuration and microphone permission.
+The kiosk uses one predefined passbook for its normal demo. You do not pick from a gallery of customer passbooks. If the first sample cannot be loaded or read, Sahaj automatically tries one of two backup samples. The backups remain hidden from the customer. Physical passbook scanning is not available. Voice features need a working provider configuration and microphone permission. Automatic recognition across languages uses Prisma v3.0 when Gnani speech-to-text is configured; without that provider, multilingual recognition depends on whichever fallback speech service is available. Common Roman-letter transcriptions of Punjabi, Bengali, Tamil and Kannada banking requests are also recognized, but the phrase list is not exhaustive and real microphone accuracy still needs testing with each language and accent.
 
 ## Screenshots
 
@@ -80,7 +80,7 @@ python -X utf8 -m pytest -q
 node --test tests/*.test.cjs
 ```
 
-In the last test run on **15 November 2026**, 155 of 158 Python tests passed and all 29 JavaScript tests passed. Three Python tests still need review against changes to the interface (`test_v16_kiosk_contract.py`, `test_v8_navigation_contract.py` and `test_v9_kiosk_contract.py`). Automated tests do not confirm that a live microphone or speech service works on every device.
+In the last test run on **15 November 2026**, 158 of 161 Python tests passed and all 36 JavaScript tests passed. Three Python tests still need review against changes to the interface (`test_v16_kiosk_contract.py`, `test_v8_navigation_contract.py` and `test_v9_kiosk_contract.py`). Automated tests do not confirm that a live microphone or speech service works on every device.
 
 ## Project files
 
@@ -97,6 +97,6 @@ In the last test run on **15 November 2026**, 155 of 158 Python tests passed and
 
 ## What still needs work
 
-Speech quality needs to be tested across accents and noisy spaces. Some translated messages also need further review. A real bank deployment would need approved bank connections, proper identity verification, security testing and a physical scanning setup.
+Speech recognition needs live testing with a configured provider, especially for short phrases, regional accents and noisy locations. Translated wording should be reviewed by native speakers. A real bank deployment would need approved bank connections, proper identity verification, security testing and a physical scanning setup.
 
 **[One-page solution pitch](docs/Sahaj_One_Page_Solution_Pitch.pdf)**

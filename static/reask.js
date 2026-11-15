@@ -3,7 +3,7 @@
 // say "I didn't catch that" and then ask the same question again (up to 3 times in a row, then stay quietly listening).
 var transcribingNow=false,customerHasSpoken=false,silenceReaskTimer=null,silenceReaskCount=0,silenceReaskStage='',silenceReaskPending=false,silenceReaskHinted=false;
 var SILENCE_REASK_MS=15000,SILENCE_REASK_MAX=2,IDLE_END_MS=30000,idleEndTimer=null,lastActivityAt=0,REASK_STAGES=['hello','request','amount','amount-confirmed','balance-check','passbook'];
-var DIDNT_CATCH={en:"I didn't catch that.",hi:'मुझे सुनाई नहीं दिया।',pa:'ਮੈਨੂੰ ਸੁਣਾਈ ਨਹੀਂ ਦਿੱਤਾ।'};
+var DIDNT_CATCH={en:"I didn't catch that.",hi:'मुझे सुनाई नहीं दिया।',pa:'ਮੈਨੂੰ ਸੁਣਾਈ ਨਹੀਂ ਦਿੱਤਾ।',bn:'আমি ঠিক শুনতে পাইনি।',ta:'நான் சரியாகக் கேட்கவில்லை.',kn:'ನನಗೆ ಸ್ಪಷ್ಟವಾಗಿ ಕೇಳಿಸಲಿಲ್ಲ.'};
 function silencePrompt(stage,code){
   const q=stagePrompt(code);
   if(stage==='amount-confirmed'&&q)return q; // the amount was heard and is on screen: only ask yes/no, never "I didn't catch that"

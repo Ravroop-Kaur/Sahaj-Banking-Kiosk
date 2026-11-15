@@ -154,10 +154,10 @@ async function finishServerClip(rec,hadSpeech){
   if(!hadSpeech||!chunks.length){if(!idleEndTimer && activeScreen!=='permissionScreen')armIdleEnd();again();return}
   const blob=encodeWav16k(chunks,rate);
   if(blob.size<16000*2*SERVER_STT.minMs/1000){again();return}
-  showVoiceStatus(speakingLanguage==='hi'?'समझ रही हूँ…':speakingLanguage==='pa'?'ਸਮਝ ਰਹੀ ਹਾਂ…':TR(speakingLanguage,'Understanding…'));
+  showVoiceStatus(({en:'Understanding…',hi:'समझ रही हूँ…',pa:'ਸਮਝ ਰਹੀ ਹਾਂ…',bn:'বুঝতে চেষ্টা করছি…',ta:'புரிந்துகொள்கிறேன்…',kn:'ಅರ್ಥಮಾಡಿಕೊಳ್ಳುತ್ತಿದ್ದೇನೆ…'})[speakingLanguage]||'Understanding…');
   clearSilenceReask();transcribingNow=true;
   try{
-    const r=await fetch('/api/voice/transcribe?language='+encodeURIComponent(speakingLanguage||'en'),{method:'POST',headers:{'Content-Type':'audio/wav'},body:blob,signal:AbortSignal.timeout(12000),sahajShowProgress:rec.shownListening});
+    const r=await fetch('/api/voice/transcribe?language='+encodeURIComponent(speechLanguageLocked?(speakingLanguage||'en'):''),{method:'POST',headers:{'Content-Type':'audio/wav'},body:blob,signal:AbortSignal.timeout(12000),sahajShowProgress:rec.shownListening});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();transcribingNow=false;
     const text=(d.text||'').trim();
@@ -170,7 +170,7 @@ async function finishServerClip(rec,hadSpeech){
       return;
     }
     speechRestartAllowed=false;
-    await handleVoice(text,detectLanguage(text));
+    await handleVoice(text,d.detected_language||detectSpokenLanguage(text));
   }catch(error){
     transcribingNow=false;console.warn('[server stt] transcription failed',error);
     showVoiceStatus(errCopy('generic'));

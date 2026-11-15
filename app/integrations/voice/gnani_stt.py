@@ -17,8 +17,8 @@ from app.integrations.voice.base import (AUDIO_TOO_LONG, EMPTY, INVALID_REQUEST,
 from app.integrations.voice.language_manager import stt_language_code, ui_language_from_locale
 
 MAX_CLIP_SECONDS = 30.0
-BANKING_KEYTERMS = ["पासबुक", "निकासी", "जमा", "रुपये", "खाता", "पेंशन", "passbook", "withdraw", "deposit", "pension", "account", "screen", "voice", "English", "Hindi", "yes", "no", "सही है", "हाँ", "नहीं", "स्क्रीन", "आवाज़", "ਪਾਸਬੁੱਕ", "ਜਮ੍ਹਾ"]
-STT_TOPIC = "A customer speaking to a bank kiosk about withdrawing or depositing cash, a passbook and amounts in rupees."
+BANKING_KEYTERMS = ["पासबुक", "निकासी", "जमा", "रुपये", "खाता", "पेंशन", "passbook", "withdraw", "deposit", "pension", "account", "screen", "voice", "English", "Hindi", "yes", "no", "सही है", "हाँ", "नहीं", "स्क्रीन", "आवाज़", "ਪਾਸਬੁੱਕ", "ਜਮ੍ਹਾ", "ਕਢਵਾਉਣਾ", "ਖਾਤਾ", "ਰੁਪਏ", "পাসবই", "টাকা", "জমা", "উত্তোলন", "হাজার", "பணம்", "எடுக்க", "செலுத்த", "கணக்கு", "ಹಣ", "ತೆಗೆಯಿರಿ", "ಜಮಾ"]
+STT_TOPIC = "A customer speaking naturally in an Indian language about withdrawing or depositing money, a passbook, a new account and rupee amounts."
 
 
 def wav_duration_seconds(wav):
