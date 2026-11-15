@@ -6,7 +6,7 @@ JS = (ROOT/'static/kiosk-v8.js').read_text(encoding='utf-8')
 APP = (ROOT/'static/app.js').read_text(encoding='utf-8')
 
 def test_original_home_separate_from_voice_services():
-    assert 'Banking, with a<br>little more' in HTML
+    assert 'Bank forms,<br>filled by' in HTML
     assert 'id="voiceContinue"' in HTML
     voice = HTML.split('id="voiceScreen"', 1)[1].split('</section>', 1)[0]
     assert 'id="voiceContinue"' not in voice

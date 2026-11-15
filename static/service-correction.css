@@ -1,0 +1,11 @@
+/* Compact recovery button. The dialog stays within a kiosk screen without scrolling. */
+.sahaj-correct-choice {display:inline-flex;align-items:center;gap:6px;white-space:nowrap;min-height:38px;padding:5px 9px;border:1px solid #97aca3;border-radius:12px;font-weight:650}
+.sahaj-correct-choice[hidden]{display:none!important}
+.sahaj-correct-short{display:none}
+.sahaj-correct-icon{font-size:20px;line-height:1}
+#sahajCorrectDialog{width:min(92vw,440px);max-height:90vh;box-sizing:border-box;padding:22px;border:1px solid #b5c7bd;border-radius:18px;background:#fff;color:#18372c;box-shadow:0 14px 50px #0004}
+#sahajCorrectDialog::backdrop{background:#172e2ba8}
+#sahajCorrectTitle{font-size:clamp(21px,3.2vw,29px);margin:0 0 16px;line-height:1.25}
+.sahaj-correct-options{display:grid;gap:10px}
+.sahaj-correct-options button{min-height:48px;font-size:clamp(15px,2.5vw,19px);border-radius:12px}
+@media (max-width:780px){.sahaj-correct-choice{padding:6px 10px;min-width:42px;justify-content:center}.sahaj-correct-label{display:none}.sahaj-correct-short{display:inline;font-size:14px}}

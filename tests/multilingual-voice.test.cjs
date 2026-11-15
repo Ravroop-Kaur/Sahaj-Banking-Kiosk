@@ -101,6 +101,48 @@ test('unknown provider language does not reset the selected language to English'
   assert.equal(ctx.language, 'pa');
 });
 
+test('service questions in each language reach the help intent and select its reply language', () => {
+  const ctx=languageContext();
+  vm.runInContext(flow.slice(flow.indexOf('function isServiceHelp('),flow.indexOf('function currentQuestion(')),ctx);
+  for(const [lang,text] of [
+    ['en','Which services do you have?'],
+    ['hi','आपके पास कौन सी सुविधाएँ हैं?'],
+    ['pa','ਤੁਸੀਂ ਕਿਹੜੀਆਂ ਸਹੂਲਤਾਂ ਦਿੰਦੇ ਹੋ?'],
+    ['pa','tusi kehriyan sewaan dinde ho'],
+    ['pa','तुसी केहड़ी सेवा दिंदे हो'],
+    ['bn','আপনারা কী কী সুবিধা দেন?'],
+    ['ta','எந்த வசதிகள் உள்ளன?'],
+    ['kn','ಯಾವ ಸೌಲಭ್ಯಗಳು ಸಿಗುತ್ತವೆ?']
+  ]){
+    assert.equal(ctx.isServiceHelp(text),true,text);
+    ctx.followSpokenLanguage(text,lang==='pa'?'hi-IN':'');
+    assert.equal(ctx.speakingLanguage,lang,text);
+  }
+  ctx.followSpokenLanguage('go back to the menu');
+  assert.equal(ctx.speakingLanguage,'en');
+});
+
+test('the microphone entry point preserves the provider language for an ambiguous correction', async () => {
+  const ctx=languageContext();
+  ctx.mode='voice';
+  ctx.window.voiceJourney={handle:(text,language)=>ctx.followSpokenLanguage(text,language)};
+  vm.runInContext(app.slice(app.indexOf('async function handleVoice('),app.indexOf('let geminiSocket=')),ctx);
+  await ctx.handleVoice('galat ho gaya','pa-IN');
+  assert.equal(ctx.speakingLanguage,'pa');
+});
+
+test('account review keeps an approval in the current language and accepts a Punjabi correction', () => {
+  const ctx=languageContext();
+  ctx.activeScreen='openingScreen';
+  ctx.window.SahajOpeningFlow={phase:'review'};
+  ctx.window.sahajConfirmation=require('../static/voice-confirmation.js');
+  vm.runInContext(read('kiosk-v20.js'),ctx);
+  ctx.followSpokenLanguage('yes','hi-IN');
+  assert.equal(ctx.speakingLanguage,'en');
+  ctx.followSpokenLanguage('ਮੈਂ ਗਲਤ ਸੇਵਾ ਚੁਣ ਲਈ, ਵਾਪਸ ਜਾਓ','hi-IN');
+  assert.equal(ctx.speakingLanguage,'pa');
+});
+
 const svc = {};
 vm.createContext(svc);
 vm.runInContext(flow.slice(flow.indexOf('function requestedService(text){'), flow.indexOf('async function switchService(kind){')), svc);

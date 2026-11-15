@@ -11,15 +11,34 @@ window.fetch=(input,options={})=>{
 async function api(path,data){const r=await fetch('/api/kiosk/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,session_id:sid})});const d=await r.json();if(!r.ok)throw Error(typeof d.detail==='string'?d.detail:'Please rescan or ask staff.');return d;}
 async function askConsent(message){return window.kioskConsent?window.kioskConsent(message):false;}
 async function consent(){if(!sid)sid=(await api('start',{consent:true,language})).session_id;}
-async function scan(kind,file){
-  if(!sid){if(!(await askConsent('Use synthetic documents only. Allow processing and simulated identity checks for this session?')))return null;await consent();}
+async function scan(kind,file,selected=null){
+  if(selected&&!selected())return null;
+  if(!sid){
+    if(!selected && !(await askConsent('Use synthetic documents only. Allow processing and simulated identity checks for this session?')))return null;
+    const started=(await api('start',{consent:true,language})).session_id;
+    if(selected&&!selected()){
+      await nativeFetch('/api/session/clear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:started})}).catch(console.warn);
+      return null;
+    }
+    sid=started;
+  }
   const fd=new FormData();fd.append('session_id',sid);fd.append('kind',kind);fd.append('file',file);
   showLoading('Reading the synthetic document…','Checking the exact sample and preparing the next step');
-  try{const r=await fetch('/api/kiosk/scan',{method:'POST',body:fd});const d=await r.json();if(!r.ok){const error=Error(d.detail||'Please rescan.');error.status=r.status;throw error;}return d;}finally{hideLoading();}
+  try{const r=await fetch('/api/kiosk/scan',{method:'POST',body:fd});const d=await r.json();if(!r.ok){const error=Error(d.detail||'Please rescan.');error.status=r.status;throw error;}return d;}finally{if(!selected||selected())hideLoading();}
 }
 async function sample(kind){return window.SahajDemoSamples.load(kind,file=>scan(kind,file));}
 function displayProfile(d){passbook={...d.profile,profile:d.profile};el('confirmedAccount').value=d.profile.account_id;el('passbookNotice').textContent=`SIMULATED — NOT UIDAI VERIFIED. Exact lookup: ${d.lookup_ms} ms.`;}
-window.SahajDemoSamples.loadPassbook=async()=>{const d=await sample('passbook');if(d?.profile)displayProfile(d);return d;};
+window.SahajDemoSamples.loadPassbook=async(isCurrent=()=>true)=>{
+ const d=await window.SahajDemoSamples.load('passbook',file=>scan('passbook',file,isCurrent));
+ if(!isCurrent())return null;
+ if(d?.profile)displayProfile(d);
+ return d;
+};
+window.sahajDiscardDocumentSession=()=>{
+ const ending=sid;sid='';opening='';occupation='';taxRoute='';openingFields=null;
+ if(openingUrl)URL.revokeObjectURL(openingUrl);openingUrl='';
+ if(ending)nativeFetch('/api/session/clear',{keepalive:true,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:ending})}).catch(console.warn);
+};
 const originalPrompt=journey.a.prompt;
 journey.a.prompt=async(key,values={})=>{
  const additions={request:'नमस्ते! मैं आपकी कैसे मदद कर सकती हूँ? Hello! How may I help you? You can withdraw, deposit or ask for a new account form.',consent:'May I process the synthetic document and run simulated identity and account checks? Say yes or no. No real identity verification or money movement occurs.','consent-declined':'No document will be processed. Say yes if you wish to continue, or say finish.',passbook:'Please scan your passbook. For this demo, say scan to use the single synthetic sample.',done:'Your draft is downloaded. Sign the printed form and take it to the displayed counter. Say finish to end.'};

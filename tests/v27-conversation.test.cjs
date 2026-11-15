@@ -4,7 +4,7 @@ const extract=(a,b)=>source.slice(source.indexOf(a),source.indexOf(b,source.inde
 const nodes={};let heard=[],selected=[],listens=0;
 const c={console,T:{hi:{notEnough:'Show balance?'}},activeScreen:'voiceScreen',endSession(){c.ended=true},language:'hi',speakingLanguage:'hi',mode:'voice',step:'service',failedReplies:0,
  customerHasSpoken:false,speechRestartAllowed:false,geminiMicPaused:true,speechRecognition:null,
- service:'withdrawal',window:{sahajCancelSpeech(){}},el:id=>nodes[id]??={},status(){},stopServerRecognition(){},
+ service:'withdrawal',window:{sahajCancelSpeech(){},SahajServiceCorrection:require('../static/service-correction.js')},el:id=>nodes[id]??={},status(){},stopServerRecognition(){},
  say:async(text,code,done)=>{heard.push(text);done?.()},startRecognition(){listens++},
  spokenWords:()=>({help:'Services',notEnough:'Show balance?',edit:'Change amount'}),
  parseLanguagePreferenceCommand:()=>false,followSpokenLanguage(){},localizeV8(){},
@@ -21,6 +21,14 @@ for(const language of ['en','hi']){c.language=language;c.customerHasSpoken=true;
 vm.runInContext(extract('async function promptVoice','async function startGreeting'),c);
 vm.runInContext(extract('function isServiceHelp','// Existing adapter'),c);
 vm.runInContext(extract('function balancePrompt','function submitAmount'),c);
+// This unit harness supplies the navigation side effects; the actual kiosk
+// uses the new correction controller and cancels pending work before routing.
+c.navigateCorrection=async command=>{
+ if(command?.action!=='service')return false;
+ if(c.step==='service'){await c.chooseService(command.service);return true}
+ if(c.step==='review'){await c.switchService(command.service);return true}
+ return false;
+};
 (async()=>{
  for(const phrase of ['कि मतलब नया अकाउंट खोलना है','मुझे बैंक अकाउंट खुलवाना है','naya account kholna hai','मुझे नया bank account चाहिए']){
   c.step='service';await c.handleVoice(phrase);assert.equal(selected.at(-1),'opening');

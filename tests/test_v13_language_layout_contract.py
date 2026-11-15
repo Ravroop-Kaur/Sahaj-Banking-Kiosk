@@ -17,7 +17,7 @@ def test_live_voice_screen_is_english_first_and_language_aware():
     assert 'v14-en-greeting' in js
     assert 'v14-hi-greeting' in js
     assert "await say('नमस्ते! मैं आपकी कैसे मदद कर सकती हूँ? Hello! How may I help you?','hi'" in js
-    assert 'followSpokenLanguage(t);localizeV8()' in js
+    assert js.index('followSpokenLanguage(t,detected)') < js.index('SahajServiceCorrection?.parse(t)')
     assert 'greetView()' in js
 
 

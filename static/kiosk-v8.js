@@ -9,7 +9,7 @@ const T={
  ta:{passbook:'மாதிரி பாஸ்புக்கைத் தேர்வு செய்யவும்',demo:'மாதிரி பாஸ்புக்',scan:'பாஸ்புக்கை ஸ்கேன் செய்க',notYet:'தற்போது வசதி இல்லை',sample:'கற்பனை மாதிரியைப் பயன்படுத்தவும்',amount:'எவ்வளவு பணம் எடுக்க விரும்புகிறீர்கள்?',depositAmount:'எவ்வளவு பணம் செலுத்த விரும்புகிறீர்கள்?',amountLabel:'தொகை (₹)',next:'தொடரவும்',notEnough:'இந்த மாதிரி கணக்கில் போதிய இருப்பு இல்லை. இருப்பைப் பார்க்க விரும்புகிறீர்களா?',balance:'உங்கள் மாதிரி இருப்பு',yes:'ஆம், இருப்பைக் காட்டு',no:'தொகையை மாற்று',edit:'குறைந்த தொகையை எடு',notice:'இது மாதிரி கணக்கு மட்டுமே; உண்மையான வங்கி இருப்பு அல்ல.',loaded:'மாதிரி பாஸ்புக் வாசிக்கப்பட்டது.',failed:'மாதிரியை வாசிக்க முடியவில்லை.',help:'பணம் எடுப்பது, செலுத்துவது மற்றும் புதிய கணக்கு விண்ணப்பத்திற்கு உதவ முடியும்.',unsupported:'இந்த சேவை தற்போது கிடைக்கவில்லை. வங்கி ஊழியரை அணுகவும்.'},
  kn:{passbook:'ಡೆಮೊ ಪಾಸ್‌ಬುಕ್ ಆಯ್ಕೆಮಾಡಿ',demo:'ಡೆಮೊ ಪಾಸ್‌ಬುಕ್',scan:'ಪಾಸ್‌ಬುಕ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',notYet:'ಈಗ ಲಭ್ಯವಿಲ್ಲ',sample:'ಕಾಲ್ಪನಿಕ ಮಾದರಿ ಬಳಸಿ',amount:'ಎಷ್ಟು ಹಣ ಹಿಂಪಡೆಯಲು ಬಯಸುತ್ತೀರಿ?',depositAmount:'ಎಷ್ಟು ಹಣ ಜಮೆ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ?',amountLabel:'ಮೊತ್ತ (₹)',next:'ಮುಂದುವರಿಸಿ',notEnough:'ಈ ಡೆಮೊ ಖಾತೆಯಲ್ಲಿ ಸಾಕಷ್ಟು ಹಣವಿಲ್ಲ. ಬಾಕಿ ಮೊತ್ತ ನೋಡಬೇಕೇ?',balance:'ನಿಮ್ಮ ಡೆಮೊ ಬಾಕಿ',yes:'ಹೌದು, ಬಾಕಿ ತೋರಿಸಿ',no:'ಮೊತ್ತ ಬದಲಿಸಿ',edit:'ಕಡಿಮೆ ಹಣ ಹಿಂಪಡೆಯಿರಿ',notice:'ಇದು ಕಾಲ್ಪನಿಕ ಡೆಮೊ ಖಾತೆ, ನಿಜವಾದ ಬ್ಯಾಂಕ್ ಬಾಕಿಯಲ್ಲ.',loaded:'ಮಾದರಿ ಪಾಸ್‌ಬುಕ್ ಓದಲಾಗಿದೆ.',failed:'ಮಾದರಿಯನ್ನು ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',help:'ಹಣ ಹಿಂಪಡೆಯಲು, ಜಮೆ ಮಾಡಲು ಮತ್ತು ಹೊಸ ಖಾತೆಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಲು ಸಹಾಯ ಮಾಡಬಹುದು.',unsupported:'ಈ ಸೇವೆ ಈಗ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಬ್ಯಾಂಕ್ ಸಿಬ್ಬಂದಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.'}
 };
-let service='',step='home',busy=false,voiceStarted=false,entryVoice=false,reviewAmount=0;window.SahajV8={get step(){return step},get service(){return service}};
+let service='',step='home',busy=false,voiceStarted=false,entryVoice=false,reviewAmount=0;window.SahajV8={get version(){return scanTurn},get step(){return step},get service(){return service}};
 const words=()=>T[language]||T.en;
 const spokenWords=()=>T[speakingLanguage]||T.en;
 const passbookGuides={
@@ -51,7 +51,11 @@ function greetView(){
   desc.innerHTML='<span class="v14-hi-question">मैं आपकी कैसे मदद कर सकती हूँ?</span><span class="v14-en-question">How may I help you?</span>';
  }else {headline.textContent=titles[lang]||titles.en;desc.textContent=subtitles[lang]||subtitles.en;}
 }
-async function promptVoice(text,after=null){if(mode!=='voice')return;window.sahajCancelSpeech?.();geminiMicPaused=false;status('voiceStatus',text);speechRestartAllowed=false;stopServerRecognition();try{speechRecognition?.abort()}catch{}await say(text,speakingLanguage,()=>{speechRestartAllowed=true;startRecognition();after?.()});}
+async function promptVoice(text,after=null){if(mode!=='voice')return;
+ if(step==='passbook'||(step==='opening'&&window.SahajOpeningFlow?.phase==='identity')){
+   const tip=window.sahajServiceSwitchTip?.();if(tip)text+=' '+tip;
+ }
+ window.sahajCancelSpeech?.();geminiMicPaused=false;status('voiceStatus',text);speechRestartAllowed=false;stopServerRecognition();try{speechRecognition?.abort()}catch{}await say(text,speakingLanguage,()=>{speechRestartAllowed=true;startRecognition();after?.()});}
 async function startGreeting(initial=false){el('voiceManual').hidden=false;greetView();show('voiceScreen');window.sahajOpeningGreeting=initial;step='service';voiceStarted=true;customerHasSpoken=false;flowStage='request';speechRestartAllowed=false;stopServerRecognition();try{speechRecognition?.abort()}catch{}const selectedVoice=typeof speakingLanguage==='string'?speakingLanguage:'en';const voiceLocked=typeof speechLanguageLocked!=='undefined'&&speechLanguageLocked===true;const finished=()=>{window.sahajOpeningGreeting=false;speechRestartAllowed=true;startRecognition()};if(selectedVoice==='en'&&!voiceLocked){await say('नमस्ते! मैं आपकी कैसे मदद कर सकती हूँ? Hello! How may I help you?','hi',finished);return;}const greetings={en:'Hello! How may I help you?',hi:'नमस्ते! मैं आपकी कैसे मदद कर सकती हूँ?',pa:'ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡੀ ਕਿਵੇਂ ਮਦਦ ਕਰ ਸਕਦੀ ਹਾਂ?',bn:'নমস্কার! আমি আপনাকে কীভাবে সাহায্য করতে পারি?',ta:'வணக்கம்! நான் உங்களுக்கு எப்படி உதவலாம்?',kn:'ನಮಸ್ಕಾರ! ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?'};await say(greetings[selectedVoice]||greetings.en,selectedVoice,finished);}
 
 function restoreHome(){if(window.SahajHome){window.SahajHome.apply();return}el('permissionTitle').innerHTML='Bank forms,<br>filled by <em>voice.</em>';el('permissionText').textContent='Speak in your language or choose a form. Print it, then take it to the bank counter.';el('voiceContinue').textContent='Start with voice · बोलकर शुरू करें';el('manualContinue').textContent='Use touch or keyboard →';}
@@ -61,11 +65,12 @@ async function chooseService(kind){failedReplies=0;if(kind==='help'){status('voi
  service=kind;step='passbook';status('v8PassbookStatus','');localizeV8();if(activeScreen==='voiceScreen'){const b=document.querySelector(`[data-v8-service="${kind}"]`);b?.classList.add('selected');await new Promise(r=>setTimeout(r,0));}
  show('v8PassbookScreen');const guide=passbookGuide();el('v8PassbookDesc').textContent=guide;if(mode==='voice')await promptVoice(passbookGuides[speakingLanguage]||passbookGuides.en);}
 let scanTurn=0;
-window.sahajBackRequest=text=>/(?:go back|take me back|previous step|वापस|वापिस|पीछे जाओ|wap[ai]s|vaap[ai]s|गलत बोल दिया)/i.test(text);
+// Navigation and corrections are handled for all six languages by service-correction.js.
 async function chooseDemo(){if(busy)return;const turn=++scanTurn;busy=true;if(mode==='voice')stopServerRecognition();status('v8PassbookStatus',({en:'Reading demo passbook…',hi:'डेमो पासबुक पढ़ी जा रही है…',pa:'ਡੈਮੋ ਪਾਸਬੁੱਕ ਪੜ੍ਹੀ ਜਾ ਰਹੀ ਹੈ…',bn:'ডেমো পাসবই পড়া হচ্ছে…',ta:'மாதிரி பாஸ்புக் வாசிக்கப்படுகிறது…',kn:'ಡೆಮೊ ಪಾಸ್‌ಬುಕ್ ಓದಲಾಗುತ್ತಿದೆ…'})[language]||'Reading demo passbook…');try{
   // The customer explicitly selected a fictional sample. Do not prompt a second time to process it.
-  const old=window.kioskConsent;window.kioskConsent=async()=>true;
-  try{passbook.profile=null;const result=await window.SahajDemoSamples.loadPassbook();if(!result?.profile)throw Error('Demo passbook is unavailable')}finally{window.kioskConsent=old}
+  passbook.profile=null;
+  const sample=await window.SahajDemoSamples.loadPassbook(()=>turn===scanTurn&&step==='passbook');
+  if(!sample?.profile)throw Error('Demo passbook is unavailable');
   if(turn!==scanTurn)return;
   if(!passbook.profile||!passbook.profile.account_id)throw Error('No matching synthetic account');
   // Balance is not returned by the scan endpoint. Fetch it using the authenticated,
@@ -169,7 +174,8 @@ function showReview(n,refreshOnly=false){reviewAmount=Number(n);step='review';co
 function showPreparedPreview(){if(step!=='preparing')return;step='preview';const c=reviewCopy(),name=passbook.profile?.name||passbook.name||'Demo customer';el('v9PreviewHeading').textContent=c.ready;el('v9PreviewMessage').textContent=name+' — '+money(reviewAmount)+' — '+c.preview;el('v9PreviewDetailsTitle').textContent=c.details;el('v9PreviewLabelName').textContent=c.labels[0];el('v9PreviewLabelAmount').textContent=c.labels[2];el('v9PreviewLabelAccount').textContent=c.labels[3];el('v9PreviewName').textContent=name;el('v9PreviewAmount').textContent=money(reviewAmount);el('v9PreviewAccount').textContent=safeAccount();el('v9PreviewDownload').textContent=c.download;const frame=el('withdrawalPdfPreview');frame.hidden=false;el('v9PdfHost').appendChild(frame);frame.src=frame.dataset.objectUrl+'#toolbar=0&navpanes=0&scrollbar=0&view=FitH';el('v16OpenWithdrawalPreview').href=frame.dataset.objectUrl;el('v16OpenWithdrawalPreview').hidden=false;show('v9PreviewScreen');import('./paper-preview.mjs').then(m=>m.renderPaper(frame,frame.dataset.objectUrl)).catch(console.warn);if(window.sahajV11){window.sahajV11.setPreviewGuide('withdrawal',{guideId:'v9PreviewGuide',statusId:'v9PreviewAutoStatus'});window.sahajV11.queueAfterGuidance('withdrawal',()=>{if(step==='preview')document.getElementById('v9PreviewDownload').click()},'v9PreviewAutoStatus',()=>step==='preview');}}
 async function prepareReviewed(){
  if(step!=='review')return;
- if(service==='deposit'){step='preparing';try{document.querySelector('[data-form="deposit"]').onclick();el('formField_amount').value=String(reviewAmount);await el('previewSampleForm').onclick();if(activeScreen==='v16DepositPreviewScreen'){step='preview';return;}throw Error(el('otherFormStatus').textContent);}catch(error){showReview(reviewAmount);status('v9ReviewStatus',error.message||'Could not prepare the form. Please try again.');}return;}
+ const activeTurn=scanTurn;
+ if(service==='deposit'){step='preparing';try{document.querySelector('[data-form="deposit"]').onclick();el('formField_amount').value=String(reviewAmount);await el('previewSampleForm').onclick();if(activeTurn!==scanTurn)return;if(activeScreen==='v16DepositPreviewScreen'){step='preview';return;}throw Error(el('otherFormStatus').textContent);}catch(error){if(activeTurn!==scanTurn)return;showReview(reviewAmount);status('v9ReviewStatus',error.message||'Could not prepare the form. Please try again.');}return;}
  // Copy confirmed synthetic profile data into the form used for server validation.
  const p=passbook.profile;
  if(!p||!/^\d{8,12}$/.test(String(p.account_id||''))||!p.name||!p.phone){
@@ -182,7 +188,8 @@ async function prepareReviewed(){
  el('amount').value=String(reviewAmount);
  el('withdrawalType').value='cash withdrawal';
  el('confirm').checked=true;
- step='preparing';status('v9ReviewStatus','');try{await el('prepare').onclick();}catch(error){showReview(reviewAmount);status('v9ReviewStatus','Could not prepare the form. Please try again.');return;}
+ step='preparing';status('v9ReviewStatus','');try{await el('prepare').onclick();}catch(error){if(activeTurn!==scanTurn)return;showReview(reviewAmount);status('v9ReviewStatus','Could not prepare the form. Please try again.');return;}
+ if(activeTurn!==scanTurn)return;
  if(step==='preparing'&&!el('download').hidden&&el('withdrawalPdfPreview').dataset.objectUrl)showPreparedPreview();
 }
 function yes(text){return /^(yes|yeah|yep|haan|han|ha|हाँ|हां|जी|बिलकुल|হ্যাঁ|ஆம்|ಹೌದು|ਹਾਂ|aama|aamam|seri|haudu|howdu|sari|hyan|हां जी|show|दिखा|दिखाओ|बताओ|balance|बैलेंस|ব্যালেন্স|இருப்பு|ਬਕਾਇਆ|ಬಾಕಿ)/i.test(text.trim())}
@@ -196,7 +203,19 @@ function briefQuestion(){
 }
 async function retryReply(hint){failedReplies++;if(failedReplies>=3){failedReplies=0;window.sahajRecovery?.open();return;}const prefix={hi:'समझ नहीं आया। ',en:'I missed that. ',pa:'ਮਾਫ਼ ਕਰਨਾ, ਸਮਝ ਨਹੀਂ ਆਇਆ। ',bn:'দুঃখিত, বুঝতে পারিনি। ',ta:'மன்னிக்கவும், புரியவில்லை. ',kn:'ಕ್ಷಮಿಸಿ, ಅರ್ಥವಾಗಲಿಲ್ಲ. '}[speakingLanguage]||'';await promptVoice(prefix+(typeof hint==='string'?hint:briefQuestion()));}
 
-function isServiceHelp(text){return /ਕੀ.*(?:ਕਰ ਸਕ|ਮਦਦ|ਸੇਵਾ)|ਕਿਹੜੀਆਂ.*ਸੇਵਾਵਾਂ|কী.*(?:করতে|সেবা|সাহায্য)|কোন.*পরিষেবা|என்ன.*(?:சேவை|உதவி|செய்ய)|என்னென்ன.*சேவை|ಯಾವ.*ಸೇವೆ|ಏನು.*(?:ಮಾಡ|ಸಹಾಯ)|केह्.*(?:सेवा|मदद)|what.*(?:can|do).*you|what.*you.*(?:can|do)|क्या.*कर.*सक|kya.*kar.*sak|कौन.*(?:सुविधा|सेवा|सर्विस)|what.*services|which.*services|how can you help|कौन\s*सी.*(?:सेवा|सर्विस)|क्या.*(?:मदद|सेवा|सर्विस)|सेवाएं.*(?:उपलब्ध|available)|सेवाएँ.*(?:उपलब्ध|available)|kya.*madad|kaun.*(?:seva|service)/i.test(text);}
+function isServiceHelp(text){
+ const phrase=String(text||'').normalize('NFC').trim();
+ const questions=[
+  /what.*(?:can|do).*you|what.*you.*(?:can|do)|(?:what|which).*services|how can you help/i,
+  /क्या.*(?:कर.*सक|मदद|सेवा|सर्विस)|कौन.*(?:सुविधा|सेवा|सर्विस)|सेवाएं.*(?:उपलब्ध|available)|सेवाएँ.*(?:उपलब्ध|available)|kya.*(?:kar.*sak|madad)|kaun.*(?:seva|service)/iu,
+  /की.*(?:कर सकदे|मदद)|(?:तुसीं?|तुस्सी).*(?:मदद|सेवा|सहूलत|कर सकदे)|केह्.*(?:सेवा|मदद)|ਕੀ.*(?:ਕਰ ਸਕ|ਮਦਦ|ਸੇਵਾ)|(?:ਕਿਹੜ|ਕੇਹੜ|ਕਿਹੋ|ਕੀ ਕੀ).*(?:ਸੇਵਾ|ਸਹੂਲਤ|ਕੰਮ)|(?:ਕਿਵੇਂ|ਕਿੱਦਾਂ).*ਮਦਦ|ਮਦਦ.*(?:ਕਿਵੇਂ|ਕਰ ਸਕਦੇ)|(?:ਸੇਵਾਵਾਂ|ਸਹੂਲਤਾਂ).*(?:ਹਨ|ਨੇ|ਦਿੰਦੇ|ਮਿਲਦੀਆਂ)/iu,
+  /\b(?:keh[rd]|kih[rd])\w*.*(?:sewa|seva|suvidha|sahulat|service|kamm)|(?:tussi|tusi).*ki.*(?:kar|madad)|kiven?.*madad/iu,
+  /(?:কোন|কী|কি কি).*(?:সেবা|সুবিধা|পরিষেবা|করতে|সাহায্য)|(?:কীভাবে|কিভাবে).*সাহায্য|ki ki (?:sheba|seba|subidha)/iu,
+  /(?:என்ன|எந்த).*(?:வசதி|சேவை|உதவி|செய்ய)|எப்படி.*உதவ|enna(?:nna)? (?:sevai|udhavi|seiya)/iu,
+  /(?:ಯಾವ|ಏನೇನು).*(?:ಸೌಲಭ್ಯ|ಸೇವೆ)|ಏನು.*(?:ಮಾಡ|ಸಹಾಯ)|ಹೇಗೆ.*ಸಹಾಯ|yaava.*seve|enu.*(?:sahaya|maad)/iu
+ ];
+ return questions.some(pattern=>pattern.test(phrase));
+}
 function currentQuestion(){const c=spokenWords();switch(step){
  case 'home':case 'service':return ({hi:'आप कौन सी सेवा चाहते हैं: पैसे निकालना, पैसे जमा करना या नया खाता?',en:'Which service would you like: withdrawal, deposit, or a new account?',pa:'ਤੁਸੀਂ ਕੀ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ? ਪੈਸੇ ਕਢਵਾਉਣੇ, ਜਮ੍ਹਾਂ ਕਰਵਾਉਣੇ ਜਾਂ ਨਵਾਂ ਖਾਤਾ ਖੋਲ੍ਹਣਾ?',bn:'আপনি কী করতে চান? টাকা তুলতে, জমা দিতে, নাকি নতুন অ্যাকাউন্ট খুলতে?',ta:'நீங்கள் என்ன செய்ய விரும்புகிறீர்கள்? பணம் எடுக்கவா, செலுத்தவா, புதிய கணக்கு தொடங்கவா?',kn:'ನೀವು ಏನು ಮಾಡಲು ಬಯಸುತ್ತೀರಿ? ಹಣ ತೆಗೆಯಲು, ಜಮೆ ಮಾಡಲು ಅಥವಾ ಹೊಸ ಖಾತೆ ತೆರೆಯಲು?'})[speakingLanguage]||'Which service would you like?';
  case 'passbook':return passbookGuides[speakingLanguage]||passbookGuides.en;
@@ -226,29 +245,119 @@ function requestedService(text){
  if(/^(?:\s+(?:करना|करने|karna|karne|कर|है|hai))*\s*(?:नहीं|नही|nahi|not)\s*(?:है|hai)?[.!।\s]*$/i.test(tail))return '';
  return /deposit|जमा|jama|ਜਮ੍ਹਾ|ਜਮਾਂ|ਪਾਉਣ|ಜಮಾ|ಜಮೆ|ಠೇವಣಿ|ಹಣ ಹಾಕ|செலுத்த|டெபாசிட்|பணம் போட|জমা|টাকা রাখতে|joma|selutha|seluthanum|panam\s+poda|panam\s+podanum|hana\s+haak|hana\s+hak|jame/.test(match[0])?'deposit':'withdrawal';
 }
-async function switchService(kind){
- window.sahajV11?.cancelSequence?.(service);
+// A correction invalidates any outstanding scan, preview and document work.
+function cancelCurrentWork(preserveDemoSession=false){
+ ++scanTurn;busy=false;failedReplies=0;reviewAmount=0;detectedAmount='';readyPayload=null;
+ clearTimeout(counterEndTimer);counterEndTimer=null;
+ if(!preserveDemoSession)window.sahajDiscardDocumentSession?.();
+ if(typeof hideLoading==='function')hideLoading();
  window.sahajCancelSpeech?.();
- service=kind;reviewAmount=0;detectedAmount='';readyPayload=null;
- el('download').hidden=true;resetSamplePreview();failedReplies=0;
- if(passbook.profile?.account_id)showAmount();else await chooseService(kind);
+ for(const name of ['withdrawal','deposit','opening'])window.sahajV11?.cancelSequence?.(name);
+ if(service==='opening'||activeScreen==='openingScreen')window.SahajOpeningFlow?.abort?.();
+ el('download').hidden=true;
+ resetSamplePreview();
 }
-async function handleVoice(raw,detected=''){if(window.sahajOpeningGreeting)return;if(window.demoFace?.answer(raw))return;const t=String(raw||'').trim();if(!t)return;lastActivityAt=Date.now();window.cancelIdleEnd?.();customerHasSpoken=true;if(/^(?:end|end session|finish|stop|done|ਖਤਮ|ਸਮਾਪਤ|শেষ|বন্ধ|முடி|முடிக்கவும்|முடிவு|ಮುಗಿಸಿ|ಅಂತ್ಯ|एंड|एण्ड|समाप्त|खत्म|बंद)(?:\s+(?:session|सत्र|करो|करें|कर दो))*[.!।\s]*$/i.test(t)){endSession();return;}if(window.sahajBackRequest?.(t)){
-  ++scanTurn;busy=false;if(typeof hideLoading==='function')hideLoading();window.sahajCancelSpeech?.();window.sahajV11?.cancelSequence?.(service);
-  if(step==='amount')await chooseService(service);
-  else if(['review','balance-question','balance-visible','preview'].includes(step))showAmount();
-  else if(step==='opening' && window.SahajOpeningFlow?.back())return;
-  else await startGreeting();
-  return;
+function clearCurrentDraft(){
+ cancelCurrentWork();
+ passbook={name:'',account_id:'',branch:'',phone:'',profile:null};
+ imageFile=null;currentIntent=null;flowStage='request';service='';
+ el('v8AmountInput').value='';el('requestedAmount').value='';el('amount').value='';
+ el('confirm').checked=false;el('utterance').value='';
+ window.voiceJourney?.reset?.();
+}
+async function chooseServiceMenu(restart=false){
+ clearCurrentDraft();step='service';
+ show('voiceScreen');greetView();localizeV8();
+ status('voiceStatus','');
+ if(mode==='voice'){
+  const code=speakingLanguage;
+  const copy=window.SahajServiceCorrection.copy[code]||window.SahajServiceCorrection.copy.en;
+  await promptVoice((restart?copy.restartPrompt:copy.choosePrompt)+' '+currentQuestion());
  }
- if(activeScreen==='counterScreen'){await promptVoice(({en:'Say end to finish the session.',hi:'सत्र समाप्त करने के लिए एंड कहें।',pa:'ਸੈਸ਼ਨ ਖਤਮ ਕਰਨ ਲਈ ਖਤਮ ਕਹੋ।',bn:'সেশন শেষ করতে শেষ বলুন।',ta:'முடிக்க, முடி என்று சொல்லுங்கள்.',kn:'ಅಧಿವೇಶನ ಮುಗಿಸಲು ಮುಗಿಸಿ ಎಂದು ಹೇಳಿ.'})[speakingLanguage]||'Say end to finish the session.');return;}if(parseLanguagePreferenceCommand(t)){localizeV8();failedReplies=0;await promptVoice(languageChangeConfirmation()+' '+currentQuestion());return;}if(detected)followSpokenLanguage(t,detected);else followSpokenLanguage(t);localizeV8();const intent=requestedService(t)||localIntent(t);
- if(isServiceHelp(t)){failedReplies=0;await promptVoice(spokenWords().help+' '+currentQuestion());return}
- if(['withdrawal','deposit'].includes(requestedService(t))&&!['home','service','opening','preparing'].includes(step)&&intent!==service){await switchService(intent);return;}
+}
+async function switchService(kind){
+ if(!['withdrawal','deposit','opening'].includes(kind))return;
+ if(kind===service&&step!=='service')return;
+ const previous=service;
+ const keepProfile=previous!=='opening'&&kind!=='opening'&&Boolean(passbook.profile?.account_id)&&passbook.profile.balance!=null;
+ cancelCurrentWork(keepProfile);
+ if(!keepProfile){passbook={name:'',account_id:'',branch:'',phone:'',profile:null};imageFile=null;}
+ if(keepProfile){service=kind;showAmount();return;}
+ await chooseService(kind);
+}
+async function navigateBack(){
+ if(step==='opening'&&window.SahajOpeningFlow?.back?.())return;
+ if(step==='amount'){cancelCurrentWork();await chooseService(service);return;}
+ if(['review','balance-question','balance-visible','preview','preparing','form'].includes(step)&&passbook.profile?.account_id){
+  cancelCurrentWork(true);showAmount();return;
+ }
+ await chooseServiceMenu();
+}
+async function navigateCorrection(command){
+ if(!command)return false;
+ if(command.action==='unsupported'){await promptVoice(spokenWords().unsupported+' '+currentQuestion());return true;}
+ if(command.action==='back'){await navigateBack();return true;}
+ if(command.action==='restart'){await chooseServiceMenu(true);return true;}
+ if(command.action==='choose'){await chooseServiceMenu();return true;}
+ if(command.action==='service'){
+  if(command.service===service&&step!=='service')return false;
+  await switchService(command.service);return true;
+ }
+ return false;
+}
+function installCorrectionControls(){
+  const spokenGuidance = {
+    en: 'To change service, say which form you want.',
+    hi: 'सेवा बदलने के लिए बताइए कि आपको कौन सा फ़ॉर्म चाहिए।',
+    pa: 'ਸੇਵਾ ਬਦਲਣ ਲਈ ਦੱਸੋ ਕਿ ਤੁਹਾਨੂੰ ਕਿਹੜਾ ਫਾਰਮ ਚਾਹੀਦਾ ਹੈ।',
+    bn: 'পরিষেবা বদলাতে কোন ফর্মটি চান বলুন।',
+    ta: 'சேவையை மாற்ற, எந்தப் படிவம் வேண்டும் என்று சொல்லுங்கள்.',
+    kn: 'ಸೇವೆಯನ್ನು ಬದಲಿಸಲು ನಿಮಗೆ ಯಾವ ಫಾರ್ಮ್ ಬೇಕು ಎಂದು ಹೇಳಿ.'
+  };
+  let offeredTip = false;
+  window.sahajServiceSwitchTip = () => {
+    if (offeredTip || mode !== 'voice') return '';
+    offeredTip = true;
+    return spokenGuidance[speakingLanguage] || spokenGuidance.en;
+  };
+
+
+window.addEventListener('sahaj:screen',e=>{if(e.detail?.id==='permissionScreen')offeredTip=false});
+ const correction=window.SahajServiceCorrection;
+ const btn=document.createElement('button');btn.id='sahajCorrectChoice';btn.className='quiet compact sahaj-correct-choice';btn.type='button';
+ btn.innerHTML='<span class="sahaj-correct-icon" aria-hidden="true">↩</span><span class="sahaj-correct-label"></span><span class="sahaj-correct-short"></span>';
+ document.querySelector('.app-header .header-tools').prepend(btn);
+ const dialog=document.createElement('dialog');dialog.id='sahajCorrectDialog';dialog.setAttribute('aria-labelledby','sahajCorrectTitle');
+ dialog.innerHTML='<h2 id="sahajCorrectTitle"></h2><div class="sahaj-correct-options"><button type="button" data-correction="back" class="secondary"></button><button type="button" data-correction="choose" class="primary"></button><button type="button" data-correction="restart" class="secondary"></button><button type="button" id="sahajCorrectCancel" class="quiet"></button></div>';
+ document.body.appendChild(dialog);
+ const update=()=>{const c=correction.copy[language]||correction.copy.en;btn.querySelector('.sahaj-correct-label').textContent=c.button;btn.querySelector('.sahaj-correct-short').textContent=c.short;btn.title=c.button;btn.setAttribute('aria-label',c.button);dialog.querySelector('h2').textContent=c.title;for(const action of ['back','choose','restart'])dialog.querySelector(`[data-correction="${action}"]`).textContent=c[action];el('sahajCorrectCancel').textContent=c.cancel;btn.hidden=activeScreen==='permissionScreen'||activeScreen==='languageScreen';};
+ btn.onclick=()=>{update();if(!dialog.open)dialog.showModal()};
+ dialog.querySelectorAll('[data-correction]').forEach(item=>{item.onclick=()=>{const action=item.dataset.correction;dialog.close();void navigateCorrection({action})}});
+ el('sahajCorrectCancel').onclick=()=>{dialog.close();if(mode==='voice')void promptVoice(currentQuestion()||((correction.copy[speakingLanguage]||correction.copy.en).choosePrompt))};
+ window.addEventListener('sahaj:screen',()=>{if(dialog.open)dialog.close();update()});
+ window.addEventListener('sahaj:locale',update);window.addEventListener('sahaj:language-preference',update);
+ update();
+}
+async function handleVoice(raw,detected=''){
+ if(window.sahajOpeningGreeting)return;
+ const t=String(raw||'').trim();if(!t)return;
+ lastActivityAt=Date.now();window.cancelIdleEnd?.();customerHasSpoken=true;
+ if(/^(?:end|end session|finish|stop|done|ਖਤਮ|ਸਮਾਪਤ|শেষ|বন্ধ|முடி|முடிக்கவும்|முடிவு|ಮುಗಿಸಿ|ಅಂತ್ಯ|एंड|एण्ड|समाप्त|खत्म|बंद)(?:\s+(?:session|सत्र|करो|करें|कर दो))*[.!।\s]*$/i.test(t)){endSession();return;}
+ if(parseLanguagePreferenceCommand(t)){localizeV8();failedReplies=0;await promptVoice(languageChangeConfirmation()+' '+currentQuestion());return;}
+ if(detected)followSpokenLanguage(t,detected);else followSpokenLanguage(t);localizeV8();
+ // Questions about supported services should never be mistaken for a new selection.
+ if(isServiceHelp(t)){failedReplies=0;await promptVoice(spokenWords().help+' '+currentQuestion());return;}
+ // Corrections take priority over amount, yes/no, document-selection and opening answers.
+ const correction=window.SahajServiceCorrection?.parse(t);
+ if(correction&&await navigateCorrection(correction))return;
+ if(window.demoFace?.answer(t))return;
+ if(activeScreen==='counterScreen'){await promptVoice(({en:'Say end to finish the session.',hi:'सत्र समाप्त करने के लिए एंड कहें।',pa:'ਸੈਸ਼ਨ ਖਤਮ ਕਰਨ ਲਈ ਖਤਮ ਕਹੋ।',bn:'সেশন শেষ করতে শেষ বলুন।',ta:'முடிக்க, முடி என்று சொல்லுங்கள்.',kn:'ಅಧಿವೇಶನ ಮುಗಿಸಲು ಮುಗಿಸಿ ಎಂದು ಹೇಳಿ.'})[speakingLanguage]||'Say end to finish the session.');return;}const intent=requestedService(t)||localIntent(t);
+ 
  if(step==='service'||step==='home'){if(intent==='withdrawal'||intent==='deposit'){await chooseService(intent);return}if(wantsNewAccount(t)){await chooseService('opening');return}if(intent==='unsupported')await promptVoice(spokenWords().unsupported);else await retryReply();return}
  if(step==='opening'){if(window.SahajOpeningFlow?.handleVoice){await window.SahajOpeningFlow.handleVoice(t);}return;}
  if(step==='passbook'){if(/passbook|pass book|password|पासबुक|पास बुक|पासवर्ड|demo|sample|नमूना|डेमो|ডেমো|পাসবই|পাসবুক|பாஸ்புக்|டெமோ|மாதிரி|ಪಾಸ್‌ಬುಕ್|ಡೆಮೋ|ಡೆಮೊ|ਡੈਮੋ|ਪਾਸਬੁੱਕ|ਨਮੂਨਾ|one|पहला|first|1/i.test(t)){failedReplies=0;await chooseDemo();}else await retryReply();return}
  if(step==='review'){const answer=window.sahajConfirmation(t,'review');if(answer==='no'){failedReplies=0;showAmount();return;}if(answer==='yes'){failedReplies=0;await prepareReviewed();return;}await retryReply();return;}
- if(step==='preview'){if(/download|print|डाउनलोड|प्रिंट/i.test(t)){el(service==='deposit'?'downloadSampleForm':'download').click();return}await promptVoice(reviewCopy().ready);return}
+ if(step==='preview'){if(window.SahajServiceCorrection.wantsDownload(t)){el(service==='deposit'?'downloadSampleForm':'download').click();return}await promptVoice(reviewCopy(speakingLanguage).ready);return}
  if(step==='amount'){const n=spokenNumberValue(t);if(n){failedReplies=0;submitAmount(n);return}await retryReply();return}
  if(step==='balance-question'){const n=spokenNumberValue(t);if(n){failedReplies=0;submitAmount(n);return}if(window.sahajConfirmation?.(t)==='no'||no(t)){showAmount();return}if(window.sahajConfirmation?.(t)==='yes'||yes(t)||/balance|बैलेंस|बैलेंस दिखा|बैलेंस बत|show me|दिखा|बकाया/i.test(t)){revealBalance();return}if(no(t)){showAmount();return}await retryReply();return}
  if(step==='balance-visible'){const n=spokenNumberValue(t);if(n){failedReplies=0;submitAmount(n);return}if(/change|less|smaller|कम|बदल|amount|राशि|টাকা|தொகை/i.test(t)){showAmount();return}await promptVoice(availableBalancePrompt());return}
@@ -300,5 +409,5 @@ window.sahajOpeningPrompt=(text)=>promptVoice(text);
 window.sahajRetryReply=retryReply;
 window.sahajResetRetries=()=>{failedReplies=0};
 window.sahajExplicitScreenChoice=false;
-localizeV8();restoreHome();
+installCorrectionControls();localizeV8();restoreHome();
 })();

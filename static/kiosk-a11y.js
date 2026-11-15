@@ -34,7 +34,7 @@
     if (!target) return;
     // In the voice journey, route through its own "go back" command so its state stays in step with the screen.
     if (mode === 'voice' && window.voiceJourney && typeof window.voiceJourney.handle === 'function') {
-      window.voiceJourney.handle('go back');
+      window.voiceJourney.handle('go back', speakingLanguage);
       return;
     }
     try { window.speechSynthesis?.cancel(); } catch {}

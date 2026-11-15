@@ -49,15 +49,30 @@ function showPhase(name){phaseVersion++;window.sahajResetRetries?.();phase=name;
 function prompt(){window.dispatchEvent(new Event('sahaj:step'));const pair=messages[phase];if(!pair)return;const question=phasePrompt(speakingLanguage);const sentence=phase==='confirm' && jobLabels ? jobLabels.voice+'. '+question : question;if(phase==='confirm'||phase==='pan'){const title=$(phase==='confirm'?'simpleOpeningConfirmStep':'simpleOpeningPanStep').querySelector('h2');if(title)title.textContent=phasePrompt(language);}status('');if(mode==='voice'&&window.sahajOpeningPrompt)window.sahajOpeningPrompt(sentence)}
 async function post(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok){let detail='The sample could not be processed. Ask a staff member.';try{const d=await r.json();if(typeof d.detail==='string')detail=d.detail}catch{}throw Error(detail)}return r}
 async function scan(kind){
+ const version=phaseVersion;
  const doc=kind==='identity'?'Aadhaar':'PAN';
  showLoading(isHi()?(doc==='PAN'?'डेमो पैन पढ़ा जा रहा है…':'डेमो आधार पढ़ा जा रहा है…'):'Reading demo '+doc+'…',isHi()?'जानकारी जाँची जा रही है।':'Checking the sample details.');
- try{return await readSample(kind)}finally{hideLoading()}
+ try{return await readSample(kind,sid)}finally{if(version===phaseVersion)hideLoading()}
 }
-async function readSample(kind){return window.SahajDemoSamples.load(kind,async file=>{const f=new FormData();f.append('session_id',sid);f.append('kind',kind);f.append('file',file);const r=await fetch('/api/kiosk/scan',{method:'POST',body:f});if(!r.ok){const error=Error('Could not read the fictional identity sample');error.status=r.status;throw error;}return r.json()})}
-async function clear(){if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=''}if(window.sahajV11)window.sahajV11.cancelSequence?.('opening');if(sid){const id=sid;sid='';await fetch('/api/session/clear',{keepalive:true,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:id})}).catch(()=>{})}if(pdfUrl){URL.revokeObjectURL(pdfUrl);pdfUrl=''}}
+async function readSample(kind,sessionId){return window.SahajDemoSamples.load(kind,async file=>{const f=new FormData();f.append('session_id',sessionId);f.append('kind',kind);f.append('file',file);const r=await fetch('/api/kiosk/scan',{method:'POST',body:f});if(!r.ok){const error=Error('Could not read the fictional identity sample');error.status=r.status;throw error;}return r.json()})}
+function releaseSession(id){
+ return fetch('/api/session/clear',{keepalive:true,method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:id})}).catch(()=>{});
+}
+async function clear(){
+ if(previewUrl)URL.revokeObjectURL(previewUrl);
+ if(pdfUrl)URL.revokeObjectURL(pdfUrl);
+ pdfUrl=previewUrl='';
+ window.sahajV11?.cancelSequence?.('opening');
+ const id=sid;
+ sid='';
+ if(id)await releaseSession(id);
+}
 async function begin(){if(working||phase!=='identity'||activeScreen!=='openingScreen')return;
  $('simpleOpeningConsent').checked=true;
- const version=phaseVersion;working=true;if(mode==='voice')stopServerRecognition();$('simpleOpeningSample').disabled=true;$('simpleOpeningSampleStatus').textContent='Reading fictional Aadhaar sample…';try{sid=(await(await post('/api/kiosk/start',{consent:true,language})).json()).session_id;const data=await scan('identity');if(version!==phaseVersion)return;const f=data.fields||{};$('simpleOpeningPerson').textContent=f.name||'—';$('openingReviewDob').textContent=f.dob||'—';showPhase('occupation');prompt()}catch(e){$('simpleOpeningSampleStatus').textContent=e.message;await clear()}finally{working=false;$('simpleOpeningSample').disabled=false}}
+ const version=phaseVersion;working=true;if(mode==='voice')stopServerRecognition();$('simpleOpeningSample').disabled=true;$('simpleOpeningSampleStatus').textContent='Reading fictional Aadhaar sample…';try{const started=(await(await post('/api/kiosk/start',{consent:true,language})).json()).session_id;
+ if(version!==phaseVersion){await releaseSession(started);return;}
+ sid=started;
+ const data=await scan('identity');if(version!==phaseVersion)return;const f=data.fields||{};$('simpleOpeningPerson').textContent=f.name||'—';$('openingReviewDob').textContent=f.dob||'—';showPhase('occupation');prompt()}catch(e){if(version!==phaseVersion)return;$('simpleOpeningSampleStatus').textContent=e.message;await clear()}finally{if(version===phaseVersion || phase==='occupation'){working=false;$('simpleOpeningSample').disabled=false}}}
 let jobLabels=null;
 let occupationTurn=0;
 // Common answers work locally. Other descriptions go through the occupation interpreter.
@@ -147,13 +162,15 @@ async function openingPageImage(pdf){
  if(!length||bytes[start]!==255||bytes[start+1]!==216)return null;
  return pdf.slice(start,start+Number(length[1]),'image/jpeg');
 }
-async function prepare(){if(working||phase!=='review')return;if(!sid||!['pan','form60'].includes(panChoice)){status('Staff assistance required for this request.');return}const version=phaseVersion;working=true;if(mode==='voice')stopServerRecognition();$('simpleOpeningPrepare').disabled=true;status('Preparing sample application…');try{if(panChoice==='pan')await scan('pan');const r=await post('/api/kiosk/opening-draft',{session_id:sid,occupation,tax_route:panChoice,confirmed:true});const blob=await r.blob();const page=await openingPageImage(blob);if(version!==phaseVersion)return;if(pdfUrl)URL.revokeObjectURL(pdfUrl);pdfUrl=URL.createObjectURL(blob);const link=$('simpleOpeningDownload');link.href=pdfUrl;const frame=$('simpleOpeningPreview');frame.src=pdfUrl+'#toolbar=0&navpanes=0&view=Fit';frame.hidden=Boolean(page);if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=page?URL.createObjectURL(page):'';const image=$('openingPageImage');image.hidden=!page;if(page)image.src=previewUrl;showPhase('result');if(window.sahajV11){window.sahajV11.setPreviewGuide('opening',{guideId:'simpleOpeningGuide',statusId:'simpleOpeningAutoStatus'});window.sahajV11.queueAfterGuidance('opening',async()=>{if(phase==='result')link.click()},'simpleOpeningAutoStatus',()=>phase==='result');}}catch(e){status(e.message)}finally{working=false;$('simpleOpeningPrepare').disabled=false}}
+async function prepare(){if(working||phase!=='review')return;if(!sid||!['pan','form60'].includes(panChoice)){status('Staff assistance required for this request.');return}const version=phaseVersion;working=true;if(mode==='voice')stopServerRecognition();$('simpleOpeningPrepare').disabled=true;status('Preparing sample application…');try{if(panChoice==='pan')await scan('pan');if(version!==phaseVersion)return;const r=await post('/api/kiosk/opening-draft',{session_id:sid,occupation,tax_route:panChoice,confirmed:true});const blob=await r.blob();const page=await openingPageImage(blob);if(version!==phaseVersion)return;if(pdfUrl)URL.revokeObjectURL(pdfUrl);pdfUrl=URL.createObjectURL(blob);const link=$('simpleOpeningDownload');link.href=pdfUrl;const frame=$('simpleOpeningPreview');frame.src=pdfUrl+'#toolbar=0&navpanes=0&view=Fit';frame.hidden=Boolean(page);if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=page?URL.createObjectURL(page):'';const image=$('openingPageImage');image.hidden=!page;if(page)image.src=previewUrl;showPhase('result');if(window.sahajV11){window.sahajV11.setPreviewGuide('opening',{guideId:'simpleOpeningGuide',statusId:'simpleOpeningAutoStatus'});window.sahajV11.queueAfterGuidance('opening',async()=>{if(phase==='result')link.click()},'simpleOpeningAutoStatus',()=>phase==='result');}}catch(e){if(version===phaseVersion)status(e.message)}finally{if(version===phaseVersion||phase==='result'){working=false;$('simpleOpeningPrepare').disabled=false}}}
 async function counter2(){
+ const version=phaseVersion;
  await loadCounter('account_opening');
+ if(version!==phaseVersion)return;
  counterInfo.form60=panChoice==='form60';
  show('counterScreen');
 }
-function reset(){working=false;$('simpleOpeningSample').disabled=false;jobLabels=null;occupationTurn++;$('v16OccupationNext').disabled=false;phase='identity';occupation='';panChoice='';$('simpleOpeningConsent').checked=false;$('simpleOpeningOccupation').value='';$('simpleOpeningSampleStatus').textContent='';document.querySelectorAll('input[name="simplePan"]').forEach(x=>x.checked=false);showPhase('identity')}
+function reset(){working=false;$('simpleOpeningPrepare').disabled=false;$('simpleOpeningSample').disabled=false;jobLabels=null;occupationTurn++;$('v16OccupationNext').disabled=false;phase='identity';occupation='';panChoice='';$('simpleOpeningConsent').checked=false;$('simpleOpeningOccupation').value='';$('simpleOpeningSampleStatus').textContent='';document.querySelectorAll('input[name="simplePan"]').forEach(x=>x.checked=false);showPhase('identity')}
 function start(){reset();queueMicrotask(()=>{if(activeScreen==='openingScreen'&&phase==='identity'&&!working)prompt()})}
 function shortQuestion(){
  const hi=speakingLanguage==='hi';
@@ -180,12 +197,12 @@ async function handleVoice(raw){const t=String(raw||'').trim();if(!t)return;swit
  if(answer==='unknown')await window.sahajRetryReply?.();
  else panAnswer(answer==='yes');
  break;
-}case'review':if(window.sahajConfirmation(t,'review')==='yes'){await prepare()}else if(window.sahajConfirmation(t,'review')==='no'){showPhase('occupation');prompt()}else await window.sahajRetryReply?.();break;case'result':if(/download|print|डाउनलोड|प्रिंट/i.test(t))$('simpleOpeningDownload').click();else await window.sahajRetryReply?.();break;case'staff':if(recognizedYes(t)||/counter|काउंटर|কাউন্টার|கவுண்டர்|ಕೌಂಟರ್|ਕਾਊਂਟਰ|go|जाओ|ठीक/i.test(t))await counter2();else await window.sahajRetryReply?.();break;}}
+}case'review':if(window.sahajConfirmation(t,'review')==='yes'){await prepare()}else if(window.sahajConfirmation(t,'review')==='no'){showPhase('occupation');prompt()}else await window.sahajRetryReply?.();break;case'result':if(window.SahajServiceCorrection.wantsDownload(t))$('simpleOpeningDownload').click();else await window.sahajRetryReply?.();break;case'staff':if(recognizedYes(t)||/counter|काउंटर|কাউন্টার|கவுண்டர்|ಕೌಂಟರ್|ਕਾਊਂਟਰ|go|जाओ|ठीक/i.test(t))await counter2();else await window.sahajRetryReply?.();break;}}
 $('simpleOpeningSample').onclick=begin;$('simpleOpeningBegin').onclick=begin;$('v16OccupationNext').onclick=occupationNext;$('simpleOpeningOccupation').addEventListener('keydown',e=>{if(e.key==='Enter')occupationNext()});$('v16OccupationYes').onclick=()=>confirmedOccupation(true);$('v16OccupationNo').onclick=()=>confirmedOccupation(false);$('v16PanYes').onclick=()=>panAnswer(true);$('v16PanNo').onclick=()=>panAnswer(false);$('v16StaffFinish').onclick=counter2;$('v16StaffBack').onclick=()=>{showPhase('pan');prompt()};$('simpleOpeningPrepare').onclick=prepare;$('openingEditWork').onclick=()=>{showPhase('occupation');prompt()};
 $('simpleOpeningDownload').addEventListener('click',counter2);
 $('simpleOpeningFinish').onclick=async()=>{await clear();endSession()};$('simpleOpeningBack').onclick=async()=>{await clear();endSession()};
 window.addEventListener('sahaj:screen',e=>{if(e.detail?.id==='permissionScreen'){clear();reset()}});
-window.SahajOpeningFlow={start,handleVoice,back(){
+window.SahajOpeningFlow={start,handleVoice,abort(){reset();return clear()},back(){
  const previous={occupation:'identity',confirm:'occupation',pan:'confirm',staff:'pan',review:'pan',result:'review'}[phase];
  if(!previous){phaseVersion++;return false;}
  window.sahajV11?.cancelSequence?.('opening');showPhase(previous);prompt();return true;

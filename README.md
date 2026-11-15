@@ -22,8 +22,15 @@ Sahaj makes that process easier to follow: choose what you need, answer a few qu
 - **Speak or tap:** Use speech guidance when available, or continue with on-screen controls and a keyboard.
 - **Choose languages:** The kiosk supports English, Hindi, Punjabi, Bengali, Tamil and Kannada for its guided banking flow. Speak in one of these languages to switch automatically, or choose different languages for the screen and voice.
 - **Review before downloading:** Check the information, see where to sign and follow directions to the appropriate counter.
+- **Correct a mistake:** Say “go back”, “start over” or ask for a different service. The on-screen **Correct / Back** button provides the same choices.
 
 The kiosk uses one predefined passbook for its normal demo. You do not pick from a gallery of customer passbooks. If the first sample cannot be loaded or read, Sahaj automatically tries one of two backup samples. The backups remain hidden from the customer. Physical passbook scanning is not available. Voice features need a working provider configuration and microphone permission. Automatic recognition across languages uses Prisma v3.0 when Gnani speech-to-text is configured; without that provider, multilingual recognition depends on whichever fallback speech service is available. Common Roman-letter transcriptions of Punjabi, Bengali, Tamil and Kannada banking requests are also recognized, but the phrase list is not exhaustive and real microphone accuracy still needs testing with each language and accent.
+
+## Change your mind at any step
+
+If you choose the wrong service, say what you actually want. For example, **“I don't want to withdraw; I want to deposit.”** Sahaj switches to the deposit flow without needing you to end the session. You can also say “go back”, “I made a mistake” or “start over”. The **Correct / Back** button is available during the service, passbook, amount, review and account-opening steps.
+
+The same controls recognize common phrases in Hindi, Punjabi, Bengali, Tamil and Kannada. The screen buttons and spoken instructions use their respective chosen languages. Going back one step keeps relevant completed details; choosing another service or starting over clears the current draft. If you change between withdrawal and deposit, the already-verified fictional passbook can be reused, but the amount and form must be checked again. Restarting clears the demo document from the current session. Documents already downloaded to the computer are not deleted.
 
 ## Screenshots
 
@@ -77,9 +84,8 @@ The repository contains three matched sets of generated passbook, Aadhaar, PAN a
 ```bash
 python -m pip install -r requirements-dev.txt
 python -X utf8 -m pytest -q
-node --test tests/*.test.cjs
+node --test tests/*.cjs
 ```
-
 
 
 ## Project files
