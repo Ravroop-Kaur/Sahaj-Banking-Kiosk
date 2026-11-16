@@ -7,7 +7,7 @@ echo Synthetic demo. No money moves.
 echo ===============================================
 where python >nul 2>nul
 if errorlevel 1 (
-  echo Install Python 3.10 or newer from python.org and enable Add Python to PATH.
+  echo Install Python 3.11 or newer from python.org and enable Add Python to PATH.
   pause
   exit /b 1
 )
@@ -18,6 +18,12 @@ if not exist .venv\Scripts\python.exe (
   echo Preparing your local Python environment...
   python -m venv .venv
   if errorlevel 1 goto fail
+)
+.venv\Scripts\python.exe -c "import sys; sys.exit(0 if sys.version_info >= (3,11) else 1)"
+if errorlevel 1 (
+  echo The local environment requires Python 3.11 or newer. Install Python, then recreate .venv.
+  pause
+  exit /b 1
 )
 echo Checking project dependencies. Internet is needed on the first run.
 .venv\Scripts\python.exe -m pip install -r requirements.txt

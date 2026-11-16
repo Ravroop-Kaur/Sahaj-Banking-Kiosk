@@ -28,6 +28,7 @@ import voice_fallback
 import passbook_ocr
 import gemini_models
 import live_protocol
+from app.ingress import KioskIngress
 from ratelimit import rate_limit
 
 ROOT = Path(__file__).parent
@@ -170,7 +171,7 @@ def _upstream_error(text) -> str:
     return str(err)[:500]
 
 
-@app.get("/api/voice/check")
+@app.get("/api/voice/check", dependencies=[Depends(rate_limit)])
 async def gemini_check(request: Request):
     """Developer diagnostic. Open http://127.0.0.1:8766/api/voice/check on the kiosk machine itself (localhost only)."""
     if (request.client.host if request.client else "") not in ("127.0.0.1", "::1", "localhost"):
@@ -208,6 +209,11 @@ async def gemini_check(request: Request):
 @app.websocket("/api/voice/live")
 async def gemini_live_proxy(client: WebSocket):
     """Proxy Gemini Live traffic so the Google API key is never sent to the browser."""
+    try:
+        rate_limit(client)
+    except HTTPException:
+        await client.close(code=1008)
+        return
     await client.accept()
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
@@ -313,7 +319,7 @@ async def gemini_live_proxy(client: WebSocket):
             if exc and not isinstance(exc, WebSocketDisconnect):
                 raise exc
         close_code = getattr(upstream, "close_code", None)
-        close_reason = getattr(upstream, "close_reason", "") or ""
+        close_reason = (getattr(upstream, "close_reason", "") or "").replace(api_key, "***")
         if close_code not in (None, 1000, 1001):
             print("[Gemini Live] " + live_protocol.describe_close(close_code, close_reason, recent_kinds), flush=True)
             try:
@@ -323,9 +329,7 @@ async def gemini_live_proxy(client: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception as exc:
-        import traceback
-        print(f"[Gemini Live proxy] {type(exc).__name__}: {exc}", flush=True)
-        traceback.print_exc()
+        print(f"[Gemini Live proxy] {type(exc).__name__}", flush=True)
         try:
             detail = str(exc).replace("\n", " ").replace(api_key, "***").strip()[:240]
             suffix = f": {detail}" if detail else ""
@@ -350,11 +354,11 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
     """Create local OCR attempts tolerant of camera rotation, blur, and low contrast."""
     try:
         from PIL import Image, ImageEnhance, ImageOps
-        image = ImageOps.exif_transpose(Image.open(BytesIO(raw)))
-        image.load()
+        image = Image.open(BytesIO(raw), formats=("PNG", "JPEG", "WEBP"))
         if image.width * image.height > 50_000_000:
             raise HTTPException(413, "Image dimensions are too large to process safely.")
-        image = image.convert("RGB")
+        image = ImageOps.exif_transpose(image).convert("RGB")
+        image.thumbnail((2400, 2400))
         # On hosts without local OCR, Gemini reads the normalized original directly.
         # Creating eight threshold/rotation variants adds CPU time but is not used.
         if not shutil.which("tesseract") and not (sys.platform == "win32" and shutil.which("powershell.exe")):
@@ -363,7 +367,7 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
             gemini_copy.save(folder / "original.jpg", format="JPEG", quality=85, optimize=True)
             return [folder / "original.jpg"]
         min_side = min(image.size)
-        scale = min(3.0, max(1.0, 1600 / max(min_side, 1)))
+        scale = min(3.0, 2400 / max(image.size), max(1.0, 1600 / max(min_side, 1)))
         if scale > 1:
             image = image.resize((round(image.width * scale), round(image.height * scale)), Image.Resampling.LANCZOS)
         # Clean (un-thresholded) copy for Gemini vision; .jpg so the Tesseract/Windows *.png globs skip it.
@@ -381,23 +385,11 @@ def _prepare_ocr_variants(raw: bytes, folder: Path, file_suffix: str = ".jpg") -
             variant.save(path, format="PNG", optimize=True)
             paths.append(path)
         return paths
-    except HTTPException:
-        raise
-    except Exception:
-        # Windows System.Drawing is a second local preprocessing path if Pillow is unavailable.
-        suffix = Path(file_suffix).suffix.lower()
-        if suffix not in {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}:
-            raise RuntimeError("This Windows OCR fallback cannot decode that image format.")
-        source = folder / f"uploaded{suffix}"
-        source.write_bytes(raw)
-        script = ROOT / "static" / "ocr" / "preprocess_windows.ps1"
-        subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
-                        "-SourcePath", str(source), "-OutputDirectory", str(folder)],
-                       capture_output=True, text=True, timeout=60, check=True)
-        paths = sorted(folder.glob("gray_*.png")) + sorted(folder.glob("contrast_*.png"))
-        if not paths:
-            raise RuntimeError("Windows local image preprocessing produced no OCR variants.")
-        return paths
+    except Image.DecompressionBombError:
+        raise HTTPException(413, "Image dimensions exceed the OCR limit.")
+    except (OSError, ValueError, SyntaxError):
+        raise HTTPException(415, "The image could not be decoded.")
+
 
 def _gemini_read_passbook(folder: Path) -> str:
     """Transcribe the passbook text with Gemini vision so the normal account-number parsing can run on it."""
@@ -501,6 +493,8 @@ def run_ocr_engines(raw: bytes, filename: str = ".jpg") -> tuple[str, str, int]:
             image = passbook_ocr.prepare_image(raw)
         except ValueError as exc:
             raise HTTPException(413, str(exc))
+        except (OSError, SyntaxError):
+            raise HTTPException(415, "The image could not be decoded.")
         text, engine = passbook_ocr.recognize(image)
         return text, engine, 1
     with tempfile.TemporaryDirectory(prefix="kiosk-ocr-") as work:
@@ -515,7 +509,7 @@ async def ocr_passbook(file: UploadFile = File(...)):
     allowed = {"image/jpeg", "image/png", "image/webp"}
     if file.content_type not in allowed:
         raise HTTPException(415, "Upload a JPG, PNG, or WebP image.")
-    raw = await file.read()
+    raw = await file.read(8 * 1024 * 1024 + 1)
     if len(raw) > 8 * 1024 * 1024:
         raise HTTPException(413, "Image must be 8 MB or smaller.")
     if not raw:
@@ -1059,6 +1053,8 @@ def _render_sample_pdf(req: SampleFormRequest, include_counter_page: bool = Fals
     if account and not re.fullmatch(r"\d{8,18}", account):
         raise HTTPException(422, "Confirm an 8–18 digit account number before preparing the form.")
     amount = req.fields.get("amount", "").strip()
+    if req.form_id == "deposit" and (not re.fullmatch(r"[0-9]{1,10}(?:\.[0-9]{1,2})?", amount) or float(amount) <= 0):
+        raise HTTPException(422, "Enter a positive deposit amount.")
     if amount and (not re.fullmatch(r"\d{1,10}(?:\.\d{1,2})?", amount) or float(amount)>1_000_000_000):
         raise HTTPException(422, "Enter an amount using digits and up to two decimal places.")
     for key, spec in FORM_DIGIT_MAP.get(req.form_id, {}).items():
@@ -1104,11 +1100,29 @@ async def protect_legacy_profile_routes(request, call_next):
         session=get_session_manager().get(request.headers.get("X-Kiosk-Session",""))
         if not session or not session.account_access or session.extracted_fields.get('matched_document')!=session.account_reference:
             return JSONResponse({"detail":"An authorised simulated kiosk session is required."},status_code=403)
-        body=await request.json()
-        account=body.get("account_id") or body.get("fields",{}).get("account")
+        try:
+            body = await request.json()
+        except (ValueError, UnicodeError, RecursionError):
+            return JSONResponse({"detail": "Expected a JSON object."}, status_code=422)
+        if not isinstance(body, dict):
+            return JSONResponse({"detail": "Expected a JSON object."}, status_code=422)
+        if request.url.path in {"/api/forms/sample-preview", "/api/forms/sample-pdf"}:
+            fields = body.get("fields")
+            account = fields.get("account") if isinstance(fields, dict) else None
+        else:
+            account = body.get("account_id")
         if not account or account!=session.account_reference:
             return JSONResponse({"detail":"Account does not belong to this simulated session."},status_code=403)
-    return await call_next(request)
+        if request.url.path in {"/api/forms/sample-preview", "/api/forms/sample-pdf"} and body.get("form_id") == "deposit":
+            profile = session.extracted_fields.get("kiosk_profile") or {}
+            if any(not profile.get(key) or fields.get(key) != profile[key] for key in ("name", "phone", "branch")):
+                return JSONResponse({"detail": "Depositor details must match the scanned passbook."}, status_code=422)
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+app.add_middleware(KioskIngress, audio_limit=voice_fallback.MAX_AUDIO_BYTES)
 
 from app.services.errors import GateError
 @app.exception_handler(GateError)

@@ -14,6 +14,9 @@ def validate_account_access(session, bank, account_reference, customer_confirmed
         raise GateError("identity_required", "Identity must be verified before account access is checked.", 403)
     if not customer_confirmed:  # uncertain OCR must be confirmed by the customer before use
         raise GateError("account_not_confirmed", "The customer must confirm the account number before it is used.", 409)
+    if account_reference != session.account_reference:
+        session.transaction_confirmed = False
+        session.pending_transaction = None
     result = bank.lookup_account(session.identity, account_reference)
     if result.ok:
         status = bank.check_account_status(account_reference)
@@ -46,6 +49,8 @@ def _require_access(session):
 
 def check_eligibility(session, bank, transaction_type, amount):
     _require_access(session)
+    session.pending_transaction = None
+    session.transaction_confirmed = False
     value = _amount(amount)
     result = bank.check_transaction_eligibility(session.account_reference, transaction_type, str(value))
     session.transaction_confirmed = False
@@ -63,6 +68,7 @@ def confirm_transaction(session, confirmed, amount):
     pending = session.pending_transaction
     if not pending:
         raise GateError("nothing_to_confirm", "Check eligibility and read the amount back before asking for confirmation.", 409)
+    session.transaction_confirmed = False
     if not confirmed:
         session.transaction_confirmed = False
         raise GateError("not_confirmed", "The customer has not confirmed the transaction.", 409)

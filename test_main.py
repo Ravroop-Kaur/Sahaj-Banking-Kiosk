@@ -266,10 +266,10 @@ def test_ocr_provenance_marks_result_as_unverified(monkeypatch):
 
 
 def test_consent_is_purpose_specific_and_revocable():
-    from types import SimpleNamespace
     from app.services.consent_manager import record_consent, has_consent, require_consent
     from app.services.errors import GateError
-    session = SimpleNamespace(consents={}, correlation_id='test-consent-purpose')
+    from app.services.session_manager import Session
+    session = Session('consent-test', 'test-consent-purpose', 0, 0)
     record_consent(session, 'data_collection', True, 'Synthetic demo')
     assert has_consent(session, 'data_collection')
     assert not has_consent(session, 'transaction')

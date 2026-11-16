@@ -246,11 +246,13 @@ ENGINES = {
 def prepare_image(raw: bytes, max_side: int = 1800) -> bytes:
     """Fix EXIF rotation, flatten to RGB, shrink to max_side, re-encode as JPEG."""
     from PIL import Image, ImageOps
-    img = ImageOps.exif_transpose(Image.open(BytesIO(raw)))
+    try:
+        img = Image.open(BytesIO(raw), formats=("PNG", "JPEG", "WEBP"))
+    except Image.DecompressionBombError as exc:
+        raise ValueError("Image dimensions are too large to process safely.") from exc
     if img.width * img.height > 50_000_000:
         raise ValueError("Image dimensions are too large to process safely.")
-    img.load()
-    img = img.convert("RGB")
+    img = ImageOps.exif_transpose(img).convert("RGB")
     img.thumbnail((max_side, max_side))
     out = BytesIO()
     img.save(out, format="JPEG", quality=88)

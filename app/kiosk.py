@@ -26,7 +26,9 @@ NOTICE='SIMULATED — NOT UIDAI VERIFIED. Synthetic documents only; no money mov
 @router.post('/start')
 def start(data:dict):
     if data.get('consent') is not True:raise HTTPException(403,'Explicit consent is required.')
-    session=get_session_manager().create(data.get('language','en'))
+    language=data.get('language','en')
+    if not isinstance(language,str) or len(language)>12:raise HTTPException(422,'Invalid language.')
+    session=get_session_manager().create(language)
     for purpose in ['data_collection','identity_verification']:
         consent_manager.record_consent(session,purpose,True,NOTICE)
     return {'session_id':session.session_id,'notice':NOTICE}

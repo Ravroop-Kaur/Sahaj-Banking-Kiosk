@@ -1,7 +1,7 @@
 """Small in-memory per-client rate limiter for the endpoints that spend paid API quota.
 
 RATE_LIMIT_PER_MIN  requests allowed per client per endpoint per minute (default 60, 0 disables)
-TRUST_PROXY=1       use the first X-Forwarded-For address (set this on Render / behind a proxy)
+TRUST_PROXY=1       trust the last X-Forwarded-For entry only behind a proxy that appends the client address
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def client_id(request: Request) -> str:
     if os.getenv("TRUST_PROXY", "").strip() in {"1", "true", "yes"}:
         forwarded = request.headers.get("x-forwarded-for", "")
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            return forwarded.rsplit(",", 1)[-1].strip()
     return request.client.host if request.client else "unknown"
 
 

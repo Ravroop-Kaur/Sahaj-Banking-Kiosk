@@ -36,7 +36,11 @@ def main():
     if existing != 1:
         return existing
     import uvicorn
-    server = uvicorn.Server(uvicorn.Config("main:app", host="127.0.0.1", port=8766, use_colors=False))
+    from main import app
+    from starlette.middleware.trustedhost import TrustedHostMiddleware
+    # A local kiosk should only answer for its own host, even after DNS rebinding.
+    local_app = TrustedHostMiddleware(app, allowed_hosts=["127.0.0.1", "localhost"], www_redirect=False)
+    server = uvicorn.Server(uvicorn.Config(local_app, host="127.0.0.1", port=8766, use_colors=False, proxy_headers=False))
     done = threading.Event()
 
     def open_when_ready():

@@ -91,7 +91,7 @@ class InitiateRequest(BaseModel):
     idempotency_key: str = ""
 
 
-@router.post("/api/session/start")
+@router.post("/api/session/start", dependencies=[Depends(rate_limit)])
 def start_session(req: StartRequest):
     session = get_session_manager().create(req.language)
     return {"session_id": session.session_id, "correlation_id": session.correlation_id, "state": session.state, "mode": get_settings().app_mode, "notice": DEMO_NOTICE}
@@ -162,7 +162,7 @@ def service_requirements(service_id: str):
 async def _read_image(file):
     if file.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(415, "Upload a JPG, PNG, or WebP image.")
-    raw = await file.read()
+    raw = await file.read(8 * 1024 * 1024 + 1)
     if not raw:
         raise HTTPException(400, "The uploaded image is empty.")
     if len(raw) > 8 * 1024 * 1024:

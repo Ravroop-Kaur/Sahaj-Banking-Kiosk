@@ -9,15 +9,11 @@ from app.services.consent_manager import require_consent
 def verify_identity(session, provider, evidence):
     require_consent(session, "identity_verification")
     result = provider.verify(evidence)
+    identity = result.data.get("identity") if result.ok else None
+    if identity is None or (session.identity is not None and session.identity != identity):
+        session.clear_authorization()
     session.identity_status = result.status
-    if result.ok and result.data.get("identity") is not None:
-        session.identity = result.data["identity"]
-    else:  # failed/unavailable check: nothing an earlier check unlocked survives
-        session.identity = None
-        session.account_access = False
-        session.account_confirmed = False
-        session.transaction_confirmed = False
-        session.pending_transaction = None
+    session.identity = identity
     get_audit_logger().log("identity.verify", session.correlation_id, provider=provider.name, status=result.status, simulated=result.simulated)
     return result
 

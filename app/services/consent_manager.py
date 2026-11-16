@@ -27,6 +27,12 @@ def record_consent(session, purpose, granted, provider_label=""):
         raise GateError("unknown_consent_purpose", f"Unknown consent purpose {purpose!r}.", 422)
     entry = {"granted": bool(granted), "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "processed_by": provider_label}
     session.consents[purpose] = entry
+    if not granted:
+        if purpose in ("data_collection", "identity_verification"):
+            session.clear_authorization()
+        else:
+            session.transaction_confirmed = False
+            session.pending_transaction = None
     get_audit_logger().log("consent.recorded", session.correlation_id, purpose=purpose, granted=bool(granted))
     return entry
 

@@ -35,8 +35,7 @@ class Session:
     transaction: dict | None = None
     voice_providers: list = field(default_factory=list)
 
-    def wipe(self):
-        self.consents.clear()
+    def clear_authorization(self):
         self.identity = None
         self.identity_status = ""
         self.extracted_fields.clear()
@@ -46,6 +45,10 @@ class Session:
         self.pending_transaction = None
         self.transaction_confirmed = False
         self.transaction = None
+
+    def wipe(self):
+        self.clear_authorization()
+        self.consents.clear()
         self.service_id = ""
         self.language = ""
         self.voice_providers.clear()

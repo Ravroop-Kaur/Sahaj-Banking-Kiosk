@@ -33,9 +33,12 @@ class DemoPaymentProvider(PaymentProvider):
             return self._result(MISCONFIGURED, "The demo payment provider is disabled when APP_MODE=production.")
         return None
 
-    def _duplicate(self, key):
+    def _duplicate(self, key, kind, account, amount):
         existing = self._by_key.get(key)
         if existing:
+            record = self._transactions[existing]
+            if (record["type"], record["account_reference"], Decimal(record["amount"])) != (kind, account, amount):
+                return self._result(INVALID_REQUEST, "This retry key already belongs to a different request.")
             return self._result(OK, "Duplicate request ignored; the original simulated transaction is returned.", dict(self._transactions[existing], duplicate=True))
         return None
 
@@ -51,16 +54,17 @@ class DemoPaymentProvider(PaymentProvider):
             amount = Decimal(str(request.get("amount")))
         except (InvalidOperation, ValueError):
             return self._result(INVALID_REQUEST, "Amount must be a positive number.")
+        key = (request.get("session_id", ""), key)
         if not amount.is_finite() or amount <= 0:
             return self._result(INVALID_REQUEST, "Amount must be a positive number.")
         with self._lock:
-            if (d := self._duplicate(key)):
+            if (d := self._duplicate(key, kind, account, amount)):
                 return d
         eligibility = self._bank.check_transaction_eligibility(account, kind, str(amount))
         if not eligibility.ok:
             return self._result(FAILED, eligibility.message or "The issuer check did not pass.", {"reason": eligibility.status})
         with self._lock:
-            if (d := self._duplicate(key)):
+            if (d := self._duplicate(key, kind, account, amount)):
                 return d
             txn_id = "SIM-" + uuid.uuid4().hex[:12].upper()
             record = {"transaction_id": txn_id, "type": kind, "amount": str(amount), "account_reference": account, "state": COMPLETED, "note": SIMULATION_NOTE}

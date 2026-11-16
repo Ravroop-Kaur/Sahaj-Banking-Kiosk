@@ -50,7 +50,7 @@ The project uses **HTML, CSS and JavaScript** for the kiosk and **Python/FastAPI
 
 ## Run it locally
 
-You will need Python 3.10 or newer, a modern browser and internet access to install dependencies. Some document-reading features require Windows OCR or Tesseract.
+You will need Python 3.11 or newer, a modern browser and internet access to install dependencies. Some document-reading features require Windows OCR or Tesseract.
 
 **On Windows:**
 
